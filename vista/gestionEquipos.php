@@ -76,6 +76,7 @@ $total_equipos = $equipos->num_rows;
     <title>Gestión de Equipos</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="../css/styleequipos.css">
+    <link rel="stylesheet" href="../css/reportes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="../img/logo.png">
     <style>
@@ -145,36 +146,63 @@ $total_equipos = $equipos->num_rows;
                 <div class="number"><?php echo $total_equipos; ?></div>
                 <div class="label">Equipos Registrados</div>
             </div>
+        </div>
+
+        <div class="export-section">
+            <div class="export-header">
+                <h3><i class="fas fa-download"></i> Exportar Reportes</h3>
+                <p>Genera reportes en diferentes formatos</p>
+            </div>
             
-            <!-- Botón de Exportar PDF -->
-            <div class="export-card">
-                <div class="export-content">
+            <div class="export-grid">
+                <!-- Exportar PDF -->
+                <div class="export-card pdf-export">
                     <div class="export-icon">
                         <i class="fas fa-file-pdf"></i>
                     </div>
-                    <div class="export-info">
-                        <h3>Exportar Reporte</h3>
-                        <p>Generar listado en formato PDF</p>
+                    <div class="export-content">
+                        <h4>Exportar a PDF</h4>
+                        <p>Reporte formal con diseño optimizado para impresión</p>
+                        <ul class="export-features">
+                            <li><i class="fas fa-check"></i> Formato profesional</li>
+                            <li><i class="fas fa-check"></i> Listo para imprimir</li>
+                            <li><i class="fas fa-check"></i> Incluye estadísticas</li>
+                        </ul>
                     </div>
-                    <a href="../export/pdf_equipos.php" class="btn-export">
-                        <i class="fas fa-download"></i>
-                        Exportar PDF
-                    </a>
+                    <div class="export-action">
+                        <a href="../export/pdf_equipos.php" class="btn-export pdf-btn">
+                            <i class="fas fa-download"></i>
+                            Descargar PDF
+                        </a>
+                        <small class="export-info">
+                            <i class="fas fa-clock"></i> Generación instantánea
+                        </small>
+                    </div>
                 </div>
-            </div>
-            <div class="export-card">
-                <div class="export-content">
+
+                <!-- Exportar Excel -->
+                <div class="export-card excel-export">
                     <div class="export-icon">
                         <i class="fas fa-file-excel"></i>
                     </div>
-                    <div class="export-info">
-                        <h3>Exportar Reporte</h3>
-                        <p>Generar listado en formato excel</p>
+                    <div class="export-content">
+                        <h4>Exportar a Excel</h4>
+                        <p>Datos estructurados para análisis y procesamiento</p>
+                        <ul class="export-features">
+                            <li><i class="fas fa-check"></i> Formato editable</li>
+                            <li><i class="fas fa-check"></i> Ideal para análisis</li>
+                            <li><i class="fas fa-check"></i> Filtros incluidos</li>
+                        </ul>
                     </div>
-                    <a href="../export/excel_equipos.php" class="btn-export">
-                        <i class="fas fa-download"></i>
-                        excel
-                    </a>
+                    <div class="export-action">
+                        <a href="../export/excel_equipos.php" class="btn-export excel-btn">
+                            <i class="fas fa-download"></i>
+                            Descargar Excel
+                        </a>
+                        <small class="export-info">
+                            <i class="fas fa-clock"></i> Generación instantánea
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>

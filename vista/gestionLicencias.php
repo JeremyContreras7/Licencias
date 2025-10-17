@@ -494,6 +494,7 @@ if ($rol === "ENCARGADO") {
             </div>
         </div>
 
+
         <!-- Formulario de creación -->
         <div class="card mb-4">
             <div class="card-header">
