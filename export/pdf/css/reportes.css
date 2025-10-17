@@ -1,0 +1,205 @@
+/* Sección de Exportación Mejorada */
+.export-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 30px;
+    color: white;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+}
+
+.export-header h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.export-header p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 0.95rem;
+}
+
+.export-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 25px;
+    margin-top: 25px;
+}
+
+.export-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
+    padding: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.export-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+}
+
+.export-card.pdf-export {
+    border-left: 4px solid #e74c3c;
+}
+
+.export-card.excel-export {
+    border-left: 4px solid #27ae60;
+}
+
+.export-icon {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    opacity: 0.9;
+}
+
+.export-card.pdf-export .export-icon {
+    color: #e74c3c;
+}
+
+.export-card.excel-export .export-icon {
+    color: #27ae60;
+}
+
+.export-content {
+    flex-grow: 1;
+    margin-bottom: 20px;
+}
+
+.export-content h4 {
+    margin: 0 0 12px 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.export-content p {
+    margin: 0 0 15px 0;
+    opacity: 0.9;
+    line-height: 1.5;
+}
+
+.export-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.export-features li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.export-features li i {
+    color: #55efc4;
+    font-size: 0.8rem;
+}
+
+.export-action {
+    text-align: center;
+}
+
+.btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+    font-size: 0.95rem;
+}
+
+.pdf-btn {
+    background: rgba(231, 76, 60, 0.9);
+    color: white;
+    border: 1px solid rgba(231, 76, 60, 0.5);
+}
+
+.pdf-btn:hover {
+    background: rgba(231, 76, 60, 1);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+    color: white;
+}
+
+.excel-btn {
+    background: rgba(39, 174, 96, 0.9);
+    color: white;
+    border: 1px solid rgba(39, 174, 96, 0.5);
+}
+
+.excel-btn:hover {
+    background: rgba(39, 174, 96, 1);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+    color: white;
+}
+
+.export-info {
+    display: block;
+    margin-top: 8px;
+    font-size: 0.8rem;
+    opacity: 0.8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .export-section {
+        padding: 20px;
+    }
+    
+    .export-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .export-card {
+        padding: 20px;
+    }
+    
+    .export-icon {
+        font-size: 2rem;
+        margin-bottom: 15px;
+    }
+    
+    .btn-export {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .export-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .export-card {
+        padding: 15px;
+    }
+    
+    .export-content h4 {
+        font-size: 1.2rem;
+    }
+}

@@ -1,0 +1,166 @@
+:root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --urban-color: #4cc9f0;
+            --polidocente-color: #7209b7;
+            --unidocente-color: #f8961e;
+            --jardin-color: #f06595;
+            --otro-color: #6c757d;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --border-radius: 12px;
+            --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container-main {
+            max-width: 800px;
+        }
+
+        .header-main {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 2rem;
+            box-shadow: var(--box-shadow);
+        }
+
+        .back-btn {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem 1.5rem;
+            transition: var(--transition);
+        }
+
+        .back-btn:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .card-custom {
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+            margin-bottom: 2rem;
+            transition: var(--transition);
+        }
+
+        .card-custom:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        .card-header-custom {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 1.25rem 1.5rem;
+            border-bottom: none;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            border: 1px solid #e1e5e9;
+            transition: var(--transition);
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+        }
+
+        .btn-primary-custom {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: var(--transition);
+        }
+
+        .btn-primary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(67, 97, 238, 0.4);
+        }
+
+        .btn-secondary-custom {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: var(--transition);
+            color: white;
+        }
+
+        .btn-secondary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+            color: white;
+        }
+
+        .info-badge {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .alert-custom {
+            border-radius: var(--border-radius);
+            border: none;
+            box-shadow: var(--box-shadow);
+            padding: 1rem 1.5rem;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, #f8d7da, #f1b0b7);
+            color: #721c24;
+        }
+
+        .current-type-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .badge-urban {
+            background-color: rgba(76, 201, 240, 0.1);
+            color: var(--urban-color);
+            border: 1px solid var(--urban-color);
+        }
+
+        .badge-polidocente {
+            background-color: rgba(114, 9, 183, 0.1);
+            color: var(--polidocente-color);
+            border: 1px solid var(--polidocente-color);
+        }
+
+        .badge-unidocente {
+            background-color: rgba(248, 150, 30, 0.1);
+            color: var(--unidocente-color);
+            border: 1px solid var(--unidocente-color);
+        }
+
+        .badge-jardin {
+            background-color: rgba(240, 101, 149, 0.1);
+            color: var(--jardin-color);
+            border: 1px solid var(--jardin-color);
+        }
+
+        .badge-other {
+            background-color: rgba(108, 117, 125, 0.1);
+            color: var(--otro-color);
+            border: 1px solid var(--otro-color);
+        }
