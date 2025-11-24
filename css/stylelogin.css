@@ -463,3 +463,28 @@ select:focus {
     align-items: center;
     gap: 6px;
 }
+
+        /* Alternativa: Botón en el footer del login */
+        .profile-footer-option {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .profile-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #6a11cb;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(106, 17, 203, 0.1);
+        }
+
+        .profile-link:hover {
+            background: rgba(106, 17, 203, 0.2);
+            transform: translateX(5px);
+        }

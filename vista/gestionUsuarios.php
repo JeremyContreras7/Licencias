@@ -11,24 +11,36 @@ include("../modelo/conexion.php");
 if (isset($_POST['crear'])) {
     $nombre = $conexion->real_escape_string($_POST['nombre']);
     $correo = $conexion->real_escape_string($_POST['correo']);
-    $pass = password_hash($_POST['pass'], PASSWORD_DEFAULT);
+    $pass = $_POST['pass'];
+    $confirm_pass = $_POST['confirm_pass'];
     $rol = $conexion->real_escape_string($_POST['rol']);
     $tipo_encargado = ($_POST['rol'] === "USUARIO") ? $conexion->real_escape_string($_POST['tipo_encargado']) : null;
     
-    // Si es ADMIN, no se asigna establecimiento
-    if ($_POST['rol'] === "ADMIN") {
-        $sql = "INSERT INTO usuarios (nombre, correo, pass, rol, tipo_encargado) 
-                VALUES ('$nombre','$correo','$pass','$rol','$tipo_encargado')";
+    // Validar contraseña
+    if (strlen($pass) < 8) {
+        $_SESSION['error'] = "❌ La contraseña debe tener al menos 8 caracteres";
+    } elseif (!preg_match('/^(?=.*[A-Za-z])(?=.*\d).{8,}$/', $pass)) {
+        $_SESSION['error'] = "❌ La contraseña debe incluir letras y números";
+    } elseif ($pass !== $confirm_pass) {
+        $_SESSION['error'] = "❌ Las contraseñas no coinciden";
     } else {
-        $id_establecimiento = (int)$_POST['id_establecimiento'];
-        $sql = "INSERT INTO usuarios (nombre, correo, pass, rol, id_establecimiento, tipo_encargado) 
-                VALUES ('$nombre','$correo','$pass','$rol','$id_establecimiento','$tipo_encargado')";
-    }
+        $pass_hash = password_hash($pass, PASSWORD_DEFAULT);
+        
+        // Si es ADMIN, no se asigna establecimiento
+        if ($_POST['rol'] === "ADMIN") {
+            $sql = "INSERT INTO usuarios (nombre, correo, pass, rol, tipo_encargado) 
+                    VALUES ('$nombre','$correo','$pass_hash','$rol','$tipo_encargado')";
+        } else {
+            $id_establecimiento = (int)$_POST['id_establecimiento'];
+            $sql = "INSERT INTO usuarios (nombre, correo, pass, rol, id_establecimiento, tipo_encargado) 
+                    VALUES ('$nombre','$correo','$pass_hash','$rol','$id_establecimiento','$tipo_encargado')";
+        }
 
-    if ($conexion->query($sql)) {
-        $_SESSION['success'] = "✅ Usuario creado correctamente";
-    } else {
-        $_SESSION['error'] = "❌ Error al crear el usuario: " . $conexion->error;
+        if ($conexion->query($sql)) {
+            $_SESSION['success'] = "✅ Usuario creado correctamente";
+        } else {
+            $_SESSION['error'] = "❌ Error al crear el usuario: " . $conexion->error;
+        }
     }
     
     header("Location: gestionUsuarios.php");
@@ -93,7 +105,138 @@ $usuario_count = $conexion->query("SELECT COUNT(*) as count FROM usuarios WHERE 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <link rel="icon" href="../img/logo.png">
+    <style>
+        /* Estilos adicionales para la validación de contraseña */
+        .password-container {
+            position: relative;
+        }
 
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--gray-500);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-password:hover {
+            color: var(--primary);
+            background: var(--gray-200);
+        }
+
+        .password-strength {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: var(--gray-100);
+            border-radius: 8px;
+            border: 1px solid var(--gray-300);
+        }
+
+        .strength-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+
+        .strength-bar {
+            height: 8px;
+            background: var(--gray-300);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .strength-weak { background: #dc3545; width: 25%; }
+        .strength-medium { background: #ffc107; width: 50%; }
+        .strength-strong { background: #28a745; width: 75%; }
+        .strength-very-strong { background: #198754; width: 100%; }
+
+        .strength-requirements {
+            font-size: 0.8rem;
+            color: var(--gray-600);
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .requirement.valid {
+            color: var(--success);
+        }
+
+        .requirement.invalid {
+            color: var(--gray-500);
+        }
+
+        .requirement i {
+            font-size: 0.7rem;
+        }
+
+        .password-match {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .match-valid {
+            color: var(--success);
+        }
+
+        .match-invalid {
+            color: var(--danger);
+        }
+
+        .field-hint {
+            font-size: 0.8rem;
+            color: var(--gray-600);
+            margin-top: 0.25rem;
+        }
+
+        .password-field {
+            margin-bottom: 1rem;
+        }
+
+        /* Variables CSS */
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --info: #17a2b8;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --white: #ffffff;
+            --gray-100: #f8f9fa;
+            --gray-200: #e9ecef;
+            --gray-300: #dee2e6;
+            --gray-400: #ced4da;
+            --gray-500: #adb5bd;
+            --gray-600: #6c757d;
+            --gray-700: #495057;
+            --gray-800: #343a40;
+            --gray-900: #212529;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -152,6 +295,7 @@ $usuario_count = $conexion->query("SELECT COUNT(*) as count FROM usuarios WHERE 
                 </div>
             </div>
         </div>
+
         <!-- Botones de Exportación Mejorados -->
         <div class="export-section">
             <div class="export-header">
@@ -218,29 +362,82 @@ $usuario_count = $conexion->query("SELECT COUNT(*) as count FROM usuarios WHERE 
                 <h3><i class="fas fa-user-plus"></i> Registrar Nuevo Usuario</h3>
             </div>
             <div class="card-body">
-                <form method="POST" action="">
+                <form method="POST" action="" id="userForm">
                     <div class="form-grid">
                         <div class="field">
                             <label for="nombre">
                                 <i class="fas fa-user"></i>
                                 Nombre completo
                             </label>
-                            <input type="text" id="nombre" name="nombre" placeholder="Ingresa el nombre completo" required>
+                            <input type="text" id="nombre" name="nombre" placeholder="Ingresa el nombre completo" required
+                                   value="<?= isset($_POST['nombre']) ? htmlspecialchars($_POST['nombre']) : '' ?>">
                         </div>
                         <div class="field">
                             <label for="correo">
                                 <i class="fas fa-envelope"></i>
                                 Correo electrónico
                             </label>
-                            <input type="email" id="correo" name="correo" placeholder="usuario@institucion.edu" required>
+                            <input type="email" id="correo" name="correo" placeholder="usuario@institucion.edu" required
+                                   value="<?= isset($_POST['correo']) ? htmlspecialchars($_POST['correo']) : '' ?>">
                         </div>
-                        <div class="field">
+                        
+                        <!-- Campo de contraseña con validación -->
+                        <div class="field password-field">
                             <label for="pass">
                                 <i class="fas fa-lock"></i>
                                 Contraseña
                             </label>
-                            <input type="password" id="pass" name="pass" placeholder="Crear una contraseña segura" required>
+                            <div class="password-container">
+                                <input type="password" id="pass" name="pass" placeholder="Crear una contraseña segura" required
+                                       minlength="8" pattern="^(?=.*[A-Za-z])(?=.*\d).{8,}$">
+                                <button type="button" class="toggle-password" onclick="togglePassword('pass')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="field-hint">Mínimo 8 caracteres con letras y números</div>
+                            
+                            <!-- Indicador de fortaleza de contraseña -->
+                            <div class="password-strength">
+                                <div class="strength-labels">
+                                    <span>Seguridad:</span>
+                                    <span id="strengthText">Débil</span>
+                                </div>
+                                <div class="strength-bar">
+                                    <div class="strength-fill" id="strengthFill"></div>
+                                </div>
+                                <div class="strength-requirements">
+                                    <div class="requirement invalid" id="reqLength">
+                                        <i class="fas fa-circle"></i>
+                                        <span>Mínimo 8 caracteres</span>
+                                    </div>
+                                    <div class="requirement invalid" id="reqLetter">
+                                        <i class="fas fa-circle"></i>
+                                        <span>Al menos una letra</span>
+                                    </div>
+                                    <div class="requirement invalid" id="reqNumber">
+                                        <i class="fas fa-circle"></i>
+                                        <span>Al menos un número</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
+                        <!-- Campo de confirmación de contraseña -->
+                        <div class="field">
+                            <label for="confirm_pass">
+                                <i class="fas fa-lock"></i>
+                                Confirmar Contraseña
+                            </label>
+                            <div class="password-container">
+                                <input type="password" id="confirm_pass" name="confirm_pass" placeholder="Repetir contraseña" required
+                                       minlength="8">
+                                <button type="button" class="toggle-password" onclick="togglePassword('confirm_pass')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div id="passwordMatch" class="password-match"></div>
+                        </div>
+
                         <div class="field">
                             <label for="rol">
                                 <i class="fas fa-user-tag"></i>
@@ -248,9 +445,9 @@ $usuario_count = $conexion->query("SELECT COUNT(*) as count FROM usuarios WHERE 
                             </label>
                             <select id="rol" name="rol" required onchange="toggleCamposPorRol(this.value)">
                                 <option value="">Seleccionar rol</option>
-                                <option value="ADMIN">Administrador del Sistema</option>
-                                <option value="ENCARGADO">Encargado Informático</option>
-                                <option value="USUARIO">Personal Escolar</option>
+                                <option value="ADMIN" <?= (isset($_POST['rol']) && $_POST['rol'] == 'ADMIN') ? 'selected' : '' ?>>Administrador del Sistema</option>
+                                <option value="ENCARGADO" <?= (isset($_POST['rol']) && $_POST['rol'] == 'ENCARGADO') ? 'selected' : '' ?>>Encargado Informático</option>
+                                <option value="USUARIO" <?= (isset($_POST['rol']) && $_POST['rol'] == 'USUARIO') ? 'selected' : '' ?>>Personal Escolar</option>
                             </select>
                         </div>
                         <div class="field">
@@ -263,7 +460,8 @@ $usuario_count = $conexion->query("SELECT COUNT(*) as count FROM usuarios WHERE 
                                 <?php
                                 $escuelas = $conexion->query("SELECT id_establecimiento, nombre_establecimiento FROM establecimientos ORDER BY nombre_establecimiento");
                                 while ($row = $escuelas->fetch_assoc()) {
-                                    echo "<option value='".$row['id_establecimiento']."'>".htmlspecialchars($row['nombre_establecimiento'])."</option>";
+                                    $selected = (isset($_POST['id_establecimiento']) && $_POST['id_establecimiento'] == $row['id_establecimiento']) ? 'selected' : '';
+                                    echo "<option value='".$row['id_establecimiento']."' $selected>".htmlspecialchars($row['nombre_establecimiento'])."</option>";
                                 }
                                 ?>
                             </select>
@@ -278,23 +476,23 @@ $usuario_count = $conexion->query("SELECT COUNT(*) as count FROM usuarios WHERE 
                             </label>
                             <select id="tipo_encargado" name="tipo_encargado" disabled>
                                 <option value="">Seleccionar tipo</option>
-                                <option value="INFORMATICA">Informática</option>
-                                <option value="ACADEMICA">Académica</option>
-                                <option value="ADMINISTRATIVA">Administrativa</option>
-                                <option value="DIRECCION">Dirección</option>
-                                <option value="CONVIVENCIA">Convivencia Escolar</option>
+                                <option value="INFORMATICA" <?= (isset($_POST['tipo_encargado']) && $_POST['tipo_encargado'] == 'INFORMATICA') ? 'selected' : '' ?>>Informática</option>
+                                <option value="ACADEMICA" <?= (isset($_POST['tipo_encargado']) && $_POST['tipo_encargado'] == 'ACADEMICA') ? 'selected' : '' ?>>Académica</option>
+                                <option value="ADMINISTRATIVA" <?= (isset($_POST['tipo_encargado']) && $_POST['tipo_encargado'] == 'ADMINISTRATIVA') ? 'selected' : '' ?>>Administrativa</option>
+                                <option value="DIRECCION" <?= (isset($_POST['tipo_encargado']) && $_POST['tipo_encargado'] == 'DIRECCION') ? 'selected' : '' ?>>Dirección</option>
+                                <option value="CONVIVENCIA" <?= (isset($_POST['tipo_encargado']) && $_POST['tipo_encargado'] == 'CONVIVENCIA') ? 'selected' : '' ?>>Convivencia Escolar</option>
                             </select>
                             <small class="info-text" id="tipoEncargadoHelp">
                                 Solo aplica para usuarios con rol "Personal Escolar"
                             </small>
                         </div>
                     </div>
-                    <button type="submit" name="crear" class="btn btn-primary">
+                    <button type="submit" name="crear" class="btn btn-primary" id="submitBtn">
                         <i class="fas fa-save"></i> Registrar Usuario
                     </button>
-                    <a href="gestionUsuarios.php" class="btn btn-secondary">
+                    <button type="reset" class="btn btn-secondary" onclick="resetPasswordValidation()">
                         <i class="fas fa-broom"></i> Limpiar Formulario
-                    </a>
+                    </button>
                 </form>
             </div>
         </div>
@@ -430,6 +628,332 @@ $usuario_count = $conexion->query("SELECT COUNT(*) as count FROM usuarios WHERE 
             </div>
         </div>
     </div>
-<script src="../js/gestionUsuarios.js"></script>
+
+    <script>
+        // Validación de contraseña en tiempo real
+        document.addEventListener('DOMContentLoaded', function() {
+            const passwordInput = document.getElementById('pass');
+            const confirmPasswordInput = document.getElementById('confirm_pass');
+            const strengthFill = document.getElementById('strengthFill');
+            const strengthText = document.getElementById('strengthText');
+            const passwordMatch = document.getElementById('passwordMatch');
+            const submitBtn = document.getElementById('submitBtn');
+
+            // Validar fortaleza de contraseña
+            if (passwordInput) {
+                passwordInput.addEventListener('input', checkPasswordStrength);
+            }
+
+            // Validar coincidencia de contraseñas
+            if (confirmPasswordInput) {
+                confirmPasswordInput.addEventListener('input', checkPasswordMatch);
+            }
+
+            // Validar formulario antes de enviar
+            const form = document.getElementById('userForm');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    if (!validatePassword()) {
+                        e.preventDefault();
+                        showNotification('Por favor, corrige los errores en la contraseña.', 'error');
+                    }
+                });
+            }
+        });
+
+        // Verificar fortaleza de la contraseña
+        function checkPasswordStrength() {
+            const password = this.value;
+            let strength = 0;
+            
+            // Actualizar requisitos visuales
+            updateRequirements(password);
+            
+            // Longitud mínima
+            if (password.length >= 8) strength += 1;
+            
+            // Contiene letras
+            if (/[a-zA-Z]/.test(password)) strength += 1;
+            
+            // Contiene números
+            if (/[0-9]/.test(password)) strength += 1;
+            
+            // Contiene caracteres especiales
+            if (/[^a-zA-Z0-9]/.test(password)) strength += 1;
+            
+            // Longitud mayor a 12
+            if (password.length >= 12) strength += 1;
+
+            // Actualizar barra y texto
+            updateStrengthIndicator(strength);
+        }
+
+        // Actualizar indicadores de requisitos
+        function updateRequirements(password) {
+            const reqLength = document.getElementById('reqLength');
+            const reqLetter = document.getElementById('reqLetter');
+            const reqNumber = document.getElementById('reqNumber');
+
+            // Longitud
+            if (password.length >= 8) {
+                reqLength.classList.add('valid');
+                reqLength.classList.remove('invalid');
+                reqLength.innerHTML = '<i class="fas fa-check-circle"></i><span>Mínimo 8 caracteres</span>';
+            } else {
+                reqLength.classList.add('invalid');
+                reqLength.classList.remove('valid');
+                reqLength.innerHTML = '<i class="fas fa-circle"></i><span>Mínimo 8 caracteres</span>';
+            }
+
+            // Letras
+            if (/[a-zA-Z]/.test(password)) {
+                reqLetter.classList.add('valid');
+                reqLetter.classList.remove('invalid');
+                reqLetter.innerHTML = '<i class="fas fa-check-circle"></i><span>Al menos una letra</span>';
+            } else {
+                reqLetter.classList.add('invalid');
+                reqLetter.classList.remove('valid');
+                reqLetter.innerHTML = '<i class="fas fa-circle"></i><span>Al menos una letra</span>';
+            }
+
+            // Números
+            if (/[0-9]/.test(password)) {
+                reqNumber.classList.add('valid');
+                reqNumber.classList.remove('invalid');
+                reqNumber.innerHTML = '<i class="fas fa-check-circle"></i><span>Al menos un número</span>';
+            } else {
+                reqNumber.classList.add('invalid');
+                reqNumber.classList.remove('valid');
+                reqNumber.innerHTML = '<i class="fas fa-circle"></i><span>Al menos un número</span>';
+            }
+        }
+
+        // Actualizar indicador visual de fortaleza
+        function updateStrengthIndicator(strength) {
+            const strengthFill = document.getElementById('strengthFill');
+            const strengthText = document.getElementById('strengthText');
+            
+            strengthFill.className = 'strength-fill';
+            
+            switch(strength) {
+                case 0:
+                case 1:
+                    strengthFill.classList.add('strength-weak');
+                    strengthText.textContent = 'Muy Débil';
+                    strengthText.style.color = '#dc3545';
+                    break;
+                case 2:
+                    strengthFill.classList.add('strength-weak');
+                    strengthText.textContent = 'Débil';
+                    strengthText.style.color = '#dc3545';
+                    break;
+                case 3:
+                    strengthFill.classList.add('strength-medium');
+                    strengthText.textContent = 'Moderada';
+                    strengthText.style.color = '#ffc107';
+                    break;
+                case 4:
+                    strengthFill.classList.add('strength-strong');
+                    strengthText.textContent = 'Fuerte';
+                    strengthText.style.color = '#28a745';
+                    break;
+                case 5:
+                    strengthFill.classList.add('strength-very-strong');
+                    strengthText.textContent = 'Muy Fuerte';
+                    strengthText.style.color = '#198754';
+                    break;
+            }
+        }
+
+        // Verificar coincidencia de contraseñas
+        function checkPasswordMatch() {
+            const password = document.getElementById('pass').value;
+            const confirmPassword = this.value;
+            const matchIndicator = document.getElementById('passwordMatch');
+
+            if (confirmPassword === '') {
+                matchIndicator.textContent = '';
+                matchIndicator.className = 'password-match';
+                return;
+            }
+
+            if (password === confirmPassword) {
+                matchIndicator.textContent = '✓ Las contraseñas coinciden';
+                matchIndicator.className = 'password-match match-valid';
+            } else {
+                matchIndicator.textContent = '✗ Las contraseñas no coinciden';
+                matchIndicator.className = 'password-match match-invalid';
+            }
+        }
+
+        // Alternar visibilidad de contraseña
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            const icon = field.nextElementSibling.querySelector('i');
+            
+            if (field.type === 'password') {
+                field.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                field.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        // Validar contraseña antes del envío
+        function validatePassword() {
+            const password = document.getElementById('pass').value;
+            const confirmPassword = document.getElementById('confirm_pass').value;
+            const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+
+            if (!passwordRegex.test(password)) {
+                showNotification('La contraseña debe tener al menos 8 caracteres con letras y números.', 'error');
+                return false;
+            }
+
+            if (password !== confirmPassword) {
+                showNotification('Las contraseñas no coinciden.', 'error');
+                return false;
+            }
+
+            return true;
+        }
+
+        // Mostrar notificación
+        function showNotification(message, type = 'info') {
+            // Crear elemento de notificación
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type} animate__animated animate__slideInDown`;
+            notification.style.position = 'fixed';
+            notification.style.top = '20px';
+            notification.style.right = '20px';
+            notification.style.zIndex = '1000';
+            notification.style.minWidth = '300px';
+            
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i> 
+                <div>${message}</div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto-remover después de 5 segundos
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Resetear validación de contraseña
+        function resetPasswordValidation() {
+            const strengthFill = document.getElementById('strengthFill');
+            const strengthText = document.getElementById('strengthText');
+            const passwordMatch = document.getElementById('passwordMatch');
+            const requirements = document.querySelectorAll('.requirement');
+
+            // Resetear indicadores
+            if (strengthFill && strengthText) {
+                strengthFill.className = 'strength-fill';
+                strengthText.textContent = 'Débil';
+                strengthText.style.color = '';
+            }
+
+            if (passwordMatch) {
+                passwordMatch.textContent = '';
+                passwordMatch.className = 'password-match';
+            }
+
+            // Resetear requisitos
+            requirements.forEach(req => {
+                req.classList.add('invalid');
+                req.classList.remove('valid');
+                req.innerHTML = req.innerHTML.replace('fa-check-circle', 'fa-circle');
+            });
+        }
+
+        // Funciones para mostrar/ocultar campos según el rol
+        function toggleCamposPorRol(rol) {
+            const establecimientoField = document.getElementById('id_establecimiento');
+            const tipoEncargadoField = document.getElementById('tipo_encargado');
+            const establecimientoHelp = document.getElementById('establecimientoHelp');
+            const tipoEncargadoHelp = document.getElementById('tipoEncargadoHelp');
+
+            switch(rol) {
+                case 'ADMIN':
+                    establecimientoField.disabled = true;
+                    tipoEncargadoField.disabled = true;
+                    establecimientoHelp.textContent = 'Los administradores no están asignados a establecimientos';
+                    tipoEncargadoHelp.textContent = 'No aplica para administradores';
+                    break;
+                case 'ENCARGADO':
+                    establecimientoField.disabled = false;
+                    establecimientoField.required = true;
+                    tipoEncargadoField.disabled = true;
+                    establecimientoHelp.textContent = 'Selecciona el establecimiento que gestionará este encargado';
+                    tipoEncargadoHelp.textContent = 'No aplica para encargados informáticos';
+                    break;
+                case 'USUARIO':
+                    establecimientoField.disabled = false;
+                    establecimientoField.required = true;
+                    tipoEncargadoField.disabled = false;
+                    tipoEncargadoField.required = true;
+                    establecimientoHelp.textContent = 'Selecciona el establecimiento del funcionario';
+                    tipoEncargadoHelp.textContent = 'Define el área de trabajo del funcionario';
+                    break;
+                default:
+                    establecimientoField.disabled = true;
+                    tipoEncargadoField.disabled = true;
+                    establecimientoHelp.textContent = 'Selecciona un rol para ver los requisitos';
+                    tipoEncargadoHelp.textContent = 'Solo aplica para usuarios con rol "Personal Escolar"';
+            }
+        }
+
+        // Las funciones existentes del modal
+        function showDeleteModal(id, nombre, rol) {
+            const modal = document.getElementById('deleteModal');
+            const userInfo = document.getElementById('userInfo');
+            const confirmBtn = document.getElementById('confirmDeleteBtn');
+            
+            userInfo.innerHTML = `
+                <div class="user-detail">
+                    <strong>Nombre:</strong> ${nombre}
+                </div>
+                <div class="user-detail">
+                    <strong>Rol:</strong> ${rol}
+                </div>
+                <div class="user-detail">
+                    <strong>ID:</strong> #${id}
+                </div>
+            `;
+            
+            confirmBtn.href = `gestionUsuarios.php?eliminar=${id}`;
+            modal.style.display = 'flex';
+        }
+
+        function hideDeleteModal() {
+            const modal = document.getElementById('deleteModal');
+            modal.style.display = 'none';
+        }
+
+        // Cerrar modal al hacer clic fuera
+        window.onclick = function(event) {
+            const modal = document.getElementById('deleteModal');
+            if (event.target === modal) {
+                hideDeleteModal();
+            }
+        }
+
+        // Inicializar campos según el rol seleccionado
+        document.addEventListener('DOMContentLoaded', function() {
+            const rolSelect = document.getElementById('rol');
+            if (rolSelect.value) {
+                toggleCamposPorRol(rolSelect.value);
+            }
+        });
+    </script>
+    <script src="../js/gestionUsuarios.js"></script>
 </body>
 </html>

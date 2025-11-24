@@ -10,6 +10,20 @@ include("../modelo/conexion.php");
 // Obtener el establecimiento del usuario logueado
 $id_establecimiento = $_SESSION['id_establecimiento'];
 
+// Verificar y crear la columna id_establecimiento si no existe
+$check_column = $conexion->query("SHOW COLUMNS FROM software LIKE 'id_establecimiento'");
+if ($check_column->num_rows == 0) {
+    // Agregar la columna id_establecimiento a la tabla software
+    $conexion->query("ALTER TABLE software ADD COLUMN id_establecimiento INT NOT NULL DEFAULT 1 AFTER es_critico");
+    
+    // Actualizar los registros existentes con el establecimiento por defecto
+    $conexion->query("UPDATE software SET id_establecimiento = 1 WHERE id_establecimiento = 0 OR id_establecimiento IS NULL");
+    
+    // Agregar la clave foránea
+    $conexion->query("ALTER TABLE software ADD CONSTRAINT fk_software_establecimiento 
+                     FOREIGN KEY (id_establecimiento) REFERENCES establecimientos(id_establecimiento)");
+}
+
 // --- CREAR SOFTWARE ---
 if (isset($_POST['crear'])) {
     $nombre_software = $conexion->real_escape_string($_POST['nombre_software']);
@@ -18,21 +32,31 @@ if (isset($_POST['crear'])) {
 
     $sql = "INSERT INTO software (nombre_software, version, es_critico, id_establecimiento) 
             VALUES ('$nombre_software', '$version', $es_critico, $id_establecimiento)";
-    $conexion->query($sql);
-    header("Location: gestionSoftware.php");
+    
+    if ($conexion->query($sql)) {
+        header("Location: gestionSoftware.php?success=created");
+    } else {
+        header("Location: gestionSoftware.php?error=db");
+    }
     exit();
 }
 
 // --- ELIMINAR SOFTWARE ---
 if (isset($_GET['eliminar'])) {
     $id = (int)$_GET['eliminar'];
-    // Elimina solo si pertenece al establecimiento del encargado
-    $conexion->query("DELETE FROM software WHERE id_software=$id AND id_establecimiento=$id_establecimiento");
-    header("Location: gestionSoftware.php");
+    
+    // Eliminar solo software del establecimiento del usuario
+    $sql = "DELETE FROM software WHERE id_software = $id AND id_establecimiento = $id_establecimiento";
+    
+    if ($conexion->query($sql)) {
+        header("Location: gestionSoftware.php?success=deleted");
+    } else {
+        header("Location: gestionSoftware.php?error=delete");
+    }
     exit();
 }
 
-// --- LISTAR SOFTWARE SOLO DEL ESTABLECIMIENTO ---
+// --- LISTAR SOFTWARE DEL ESTABLECIMIENTO ---
 $software = $conexion->query("
     SELECT s.*, e.nombre_establecimiento 
     FROM software s
@@ -43,27 +67,64 @@ $software = $conexion->query("
 
 // Contar software para estadísticas
 $total_software = $software->num_rows;
-$software_critico = $conexion->query("SELECT COUNT(*) as count FROM software WHERE id_establecimiento = $id_establecimiento AND es_critico = 1")->fetch_assoc()['count'];
+$software_critico_result = $conexion->query("SELECT COUNT(*) as count FROM software WHERE id_establecimiento = $id_establecimiento AND es_critico = 1");
+$software_critico = $software_critico_result->fetch_assoc()['count'];
+
+// Obtener nombre del establecimiento para mostrar
+$establecimiento_result = $conexion->query("SELECT nombre_establecimiento FROM establecimientos WHERE id_establecimiento = $id_establecimiento");
+$establecimiento = $establecimiento_result->fetch_assoc()['nombre_establecimiento'];
+
+// Manejo de mensajes
+$mensaje = '';
+$tipo_mensaje = '';
+
+if (isset($_GET['success'])) {
+    $mensaje = match($_GET['success']) {
+        'created' => '✅ Software registrado exitosamente.',
+        'deleted' => '✅ Software eliminado exitosamente.',
+        default => '✅ Operación completada exitosamente.'
+    };
+    $tipo_mensaje = 'success';
+}
+
+if (isset($_GET['error'])) {
+    $mensaje = match($_GET['error']) {
+        'db' => '❌ Error en la base de datos. Intente nuevamente.',
+        'delete' => '❌ Error al eliminar el software.',
+        default => '❌ Ha ocurrido un error.'
+    };
+    $tipo_mensaje = 'error';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Gestión de Software</title>
+    <title>Gestión de Software - <?php echo htmlspecialchars($establecimiento); ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="../css/style_software.css">
-    <link rel="stylesheet" href="../css/reportes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="../img/logo.png">
+    <link rel="stylesheet" href="../css/style_software.css">
 </head>
 <body>
     <div class="page">
+        <!-- Notificaciones -->
+        <?php if ($mensaje): ?>
+            <div class="notification <?= $tipo_mensaje ?>">
+                <?= $mensaje ?>
+            </div>
+        <?php endif; ?>
+
         <!-- Header Mejorado -->
         <header class="header">
             <div class="header-content">
                 <div class="header-text">
                     <h1><i class="fas fa-boxes"></i> Gesti&oacute;n de Software</h1>
                     <p>Registra y administra el software disponible en tu establecimiento</p>
+                    <div class="establecimiento-badge">
+                        <i class="fas fa-building"></i>
+                        Establecimiento: <?php echo htmlspecialchars($establecimiento); ?>
+                    </div>
                 </div>
                 <div class="header-actions">
                     <a class="back-btn" href="menu_informatico.php">
@@ -92,7 +153,8 @@ $software_critico = $conexion->query("SELECT COUNT(*) as count FROM software WHE
                 <div class="label">Software Normal</div>
             </div>
         </div>
- <!-- Botones de Exportación Mejorados -->
+
+        <!-- Botones de Exportación Mejorados -->
         <div class="export-section">
             <div class="export-header">
                 <h3><i class="fas fa-download"></i> Exportar Reportes</h3>
@@ -152,7 +214,6 @@ $software_critico = $conexion->query("SELECT COUNT(*) as count FROM software WHE
             </div>
         </div>
 
-
         <!-- Formulario de Registro -->
         <section class="form-card">
             <h2><i class="fas fa-plus-circle"></i> Registrar Nuevo Software</h2>
@@ -191,9 +252,9 @@ $software_critico = $conexion->query("SELECT COUNT(*) as count FROM software WHE
                     <button type="submit" name="crear" class="btn-primary">
                         <i class="fas fa-save"></i> Registrar Software
                     </button>
-                    <a href="gestionSoftware.php" class="btn-outline">
+                    <button type="reset" class="btn-outline">
                         <i class="fas fa-broom"></i> Limpiar Formulario
-                    </a>
+                    </button>
                 </div>
             </form>
         </section>
@@ -274,6 +335,5 @@ $software_critico = $conexion->query("SELECT COUNT(*) as count FROM software WHE
         </section>
     </div>
 <script src="../js/gestionSoftware.js"></script>
-
 </body>
 </html>

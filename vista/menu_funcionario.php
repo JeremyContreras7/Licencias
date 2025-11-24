@@ -44,7 +44,7 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== "USUARIO") {
             </a>
           </li>
           <li>
-            <a href="reportar_problema.php">
+          <a href="foro.php" class="btn">
               <i class="fas fa-exclamation-triangle"></i>
               <span>Reportar Problema</span>
             </a>

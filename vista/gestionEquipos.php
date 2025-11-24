@@ -38,7 +38,8 @@ if (isset($_POST['crear'])) {
         }
     }
 }
-
+$establecimiento_result = $conexion->query("SELECT nombre_establecimiento FROM establecimientos WHERE id_establecimiento = $id_establecimiento");
+$establecimiento = $establecimiento_result->fetch_assoc()['nombre_establecimiento'];
 // --- MOSTRAR MENSAJE DE ÉXITO ---
 if (isset($_GET['success'])) {
     $mensaje = '<div class="alert success"><i class="fas fa-check-circle"></i> Equipo registrado exitosamente.</div>';
@@ -76,12 +77,9 @@ $total_equipos = $equipos->num_rows;
     <title>Gestión de Equipos</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="../css/styleequipos.css">
-    <link rel="stylesheet" href="../css/reportes.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="../img/logo.png">
-    <style>
 
-    </style>
 </head>
 <body>
     <!-- Modal de Confirmación de Eliminación -->
@@ -97,7 +95,7 @@ $total_equipos = $equipos->num_rows;
                     <strong id="equipoNombre"></strong><br>
                     <span id="equipoDetalles"></span>
                 </div>
-                <p style="color: #e74c3c; font-weight: 500;">
+                <p style="color: var(--danger); font-weight: 500;">
                     <i class="fas fa-info-circle"></i>
                     Esta acción no se puede deshacer
                 </p>
@@ -127,7 +125,7 @@ $total_equipos = $equipos->num_rows;
                     </a>
                     <div class="badge">
                         <i class="fas fa-building"></i>
-                        Establecimiento: <?php echo htmlspecialchars($_SESSION['establecimiento'] ?? '—'); ?>
+                        Establecimiento: <?php echo htmlspecialchars($establecimiento); ?>
                     </div>
                 </div>
             </div>
@@ -223,7 +221,7 @@ $total_equipos = $equipos->num_rows;
                         <label for="sistema_operativo">
                             <i class="fas fa-cog"></i> Sistema operativo
                         </label>
-                        <input id="sistema_operativo" name="sistema_operativo" placeholder="Windows 10 Pro" rows="3"></input>
+                        <input id="sistema_operativo" name="sistema_operativo" placeholder="Windows 10 Pro" rows="3">
                     </div>
 
                     <div class="field">
@@ -238,7 +236,7 @@ $total_equipos = $equipos->num_rows;
                             <i class="fas fa-barcode"></i> Número Serial
                         </label>
                         <input id="Numero_serial" type="text" name="Numero_serial" placeholder="3CMN8G21B" required>
-                        <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                        <small style="color: var(--gray); font-size: 13px; margin-top: 8px; display: block;">
                             <i class="fas fa-info-circle"></i> Este número debe ser único para cada equipo
                         </small>
                     </div>
@@ -291,7 +289,7 @@ $total_equipos = $equipos->num_rows;
                                 <td><?php echo htmlspecialchars($row['sistema_operativo'] ?: '—'); ?></td>
                                 <td><?php echo htmlspecialchars($row['Modelo'] ?: '—'); ?></td>
                                 <td>
-                                    <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-family: monospace;">
+                                    <code style="background: var(--light); padding: 4px 8px; border-radius: 6px; font-family: monospace; font-size: 13px;">
                                         <?php echo htmlspecialchars($row['Numero_serial'] ?: '—'); ?>
                                     </code>
                                 </td>

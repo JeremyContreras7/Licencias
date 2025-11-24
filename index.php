@@ -122,11 +122,18 @@ session_start();
 
             <!-- Footer -->
             <div class="login-footer">
-                <p><i class="fas fa-info-circle"></i> Departamento de educacion municipal ovalle</p>
+                <p><i class="fas fa-info-circle"></i> Departamento de educación municipal ovalle</p>
+                
+                <div class="profile-footer-option">
+                    <a href="vista/mi_perfil.php" class="profile-link">
+                        <i class="fas fa-user-cog"></i>
+                        Conoce al Desarrollador
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-<script src="js/login.js"></script>
 
+    <script src="js/login.js"></script>
 </body>
 </html>

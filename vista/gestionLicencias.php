@@ -14,6 +14,77 @@ $nombre_usuario = htmlspecialchars($_SESSION['nombre'] ?? '');
 // Determinar la ruta del menú según el rol
 $menu_url = ($rol === "ADMIN") ? "menu.php" : "menu_informatico.php";
 
+// --- ACTUALIZAR ESTADOS DE LICENCIAS AUTOMÁTICAMENTE ---
+$hoy = date('Y-m-d');
+
+// Primero actualizamos todas las licencias que están vencidas
+if ($rol === "ENCARGADO") {
+    $update_vencidas = $conexion->prepare("
+        UPDATE licencias 
+        SET estado = 'VENCIDA' 
+        WHERE fecha_vencimiento < ? 
+        AND estado != 'VENCIDA'
+        AND id_establecimiento = ?
+    ");
+    $update_vencidas->bind_param("si", $hoy, $id_establecimiento);
+} else {
+    $update_vencidas = $conexion->prepare("
+        UPDATE licencias 
+        SET estado = 'VENCIDA' 
+        WHERE fecha_vencimiento < ? 
+        AND estado != 'VENCIDA'
+    ");
+    $update_vencidas->bind_param("s", $hoy);
+}
+$update_vencidas->execute();
+$update_vencidas->close();
+
+// Luego actualizamos las licencias que están por vencer (próximos 30 días)
+$fecha_limite = date('Y-m-d', strtotime('+30 days'));
+
+if ($rol === "ENCARGADO") {
+    $update_proximas = $conexion->prepare("
+        UPDATE licencias 
+        SET estado = 'POR VENCER' 
+        WHERE fecha_vencimiento BETWEEN ? AND ?
+        AND estado NOT IN ('VENCIDA', 'POR VENCER')
+        AND id_establecimiento = ?
+    ");
+    $update_proximas->bind_param("ssi", $hoy, $fecha_limite, $id_establecimiento);
+} else {
+    $update_proximas = $conexion->prepare("
+        UPDATE licencias 
+        SET estado = 'POR VENCER' 
+        WHERE fecha_vencimiento BETWEEN ? AND ?
+        AND estado NOT IN ('VENCIDA', 'POR VENCER')
+    ");
+    $update_proximas->bind_param("ss", $hoy, $fecha_limite);
+}
+$update_proximas->execute();
+$update_proximas->close();
+
+// Finalmente, las que están vigentes (más de 30 días)
+if ($rol === "ENCARGADO") {
+    $update_vigentes = $conexion->prepare("
+        UPDATE licencias 
+        SET estado = 'VIGENTE' 
+        WHERE fecha_vencimiento > ?
+        AND estado NOT IN ('VENCIDA', 'VIGENTE')
+        AND id_establecimiento = ?
+    ");
+    $update_vigentes->bind_param("si", $fecha_limite, $id_establecimiento);
+} else {
+    $update_vigentes = $conexion->prepare("
+        UPDATE licencias 
+        SET estado = 'VIGENTE' 
+        WHERE fecha_vencimiento > ?
+        AND estado NOT IN ('VENCIDA', 'VIGENTE')
+    ");
+    $update_vigentes->bind_param("s", $fecha_limite);
+}
+$update_vigentes->execute();
+$update_vigentes->close();
+
 // --- CREAR LICENCIA ---
 if (isset($_POST['crear'])) {
     $id_equipo = (int)$_POST['id_equipo'];
@@ -21,6 +92,11 @@ if (isset($_POST['crear'])) {
     $id_usuario = (int)$_POST['id_usuario'];
     $fecha_inicio = trim($_POST['fecha_inicio']);
     $fecha_vencimiento = trim($_POST['fecha_vencimiento']);
+    $tipo_licencia = trim($_POST['tipo_licencia']);
+    $restricciones = trim($_POST['restricciones']);
+    $renovable = isset($_POST['renovable']) ? 1 : 0;
+    $metodo_activacion = trim($_POST['metodo_activacion']);
+    $notas = trim($_POST['notas']);
 
     if (empty($fecha_inicio) || empty($fecha_vencimiento)) {
         header("Location: gestionLicencias.php?error=fechas");
@@ -59,14 +135,37 @@ if (isset($_POST['crear'])) {
             header("Location: gestionLicencias.php?error=usuario_no_pertenece");
             exit();
         }
+
+        // Para ENCARGADO, usar el id_establecimiento de la sesión
+        $id_establecimiento_licencia = $id_establecimiento;
+    } else {
+        // Para ADMIN, obtener el id_establecimiento del equipo seleccionado
+        $stmt = $conexion->prepare("SELECT id_establecimiento FROM equipos WHERE id_equipo = ?");
+        $stmt->bind_param("i", $id_equipo);
+        $stmt->execute();
+        $stmt->bind_result($id_establecimiento_licencia);
+        $stmt->fetch();
+        $stmt->close();
     }
 
-    // Insertar licencia
+    // Calcular estado automáticamente
+    $dias_restantes = floor((strtotime($fecha_vencimiento) - strtotime($hoy)) / (60 * 60 * 24));
+    
+    if ($fecha_vencimiento < $hoy) {
+        $estado = 'VENCIDA';
+    } elseif ($dias_restantes <= 30) {
+        $estado = 'POR VENCER';
+    } else {
+        $estado = 'VIGENTE';
+    }
+
+    // Insertar licencia con todos los campos CORREGIDOS
     $stmt = $conexion->prepare("
-        INSERT INTO licencias (id_equipo, id_software, id_usuario, fecha_inicio, fecha_vencimiento) 
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO licencias 
+        (id_equipo, id_software, id_usuario, fecha_inicio, fecha_vencimiento, estado, tipo_licencia, restricciones, renovable, metodo_activacion, notas, id_establecimiento) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmt->bind_param("iiiss", $id_equipo, $id_software, $id_usuario, $fecha_inicio, $fecha_vencimiento);
+    $stmt->bind_param("iiisssssissi", $id_equipo, $id_software, $id_usuario, $fecha_inicio, $fecha_vencimiento, $estado, $tipo_licencia, $restricciones, $renovable, $metodo_activacion, $notas, $id_establecimiento_licencia);
     $ok = $stmt->execute();
     $stmt->close();
 
@@ -79,9 +178,8 @@ if (isset($_GET['eliminar'])) {
     $id = (int)$_GET['eliminar'];
     if ($rol === "ENCARGADO") {
         $stmt = $conexion->prepare("
-            DELETE l FROM licencias l
-            JOIN equipos e ON l.id_equipo = e.id_equipo
-            WHERE l.id_licencia = ? AND e.id_establecimiento = ?
+            DELETE FROM licencias 
+            WHERE id_licencia = ? AND id_establecimiento = ?
         ");
         $stmt->bind_param("ii", $id, $id_establecimiento);
         $stmt->execute();
@@ -123,23 +221,27 @@ if ($rol === "ENCARGADO") {
 if ($rol === "ENCARGADO") {
     $licencias = $conexion->query("
         SELECT l.id_licencia, e.nombre_equipo, s.nombre_software, s.version, 
-               l.fecha_inicio, l.fecha_vencimiento, u.nombre AS usuario
+               l.fecha_inicio, l.fecha_vencimiento as fecha_vencimiento, l.estado, l.tipo_licencia,
+               l.restricciones, l.renovable, l.metodo_activacion, l.notas,
+               u.nombre AS usuario
         FROM licencias l
         JOIN equipos e ON e.id_equipo = l.id_equipo
         JOIN software s ON s.id_software = l.id_software
         JOIN usuarios u ON u.id_usuario = l.id_usuario
-        WHERE e.id_establecimiento = {$id_establecimiento}
+        WHERE l.id_establecimiento = {$id_establecimiento}
         ORDER BY l.fecha_vencimiento ASC
     ");
 } else {
     $licencias = $conexion->query("
         SELECT l.id_licencia, e.nombre_equipo, s.nombre_software, s.version, 
-               l.fecha_inicio, l.fecha_vencimiento, u.nombre AS usuario, est.nombre_establecimiento
+               l.fecha_inicio, l.fecha_vencimiento as fecha_vencimiento, l.estado, l.tipo_licencia,
+               l.restricciones, l.renovable, l.metodo_activacion, l.notas,
+               u.nombre AS usuario, est.nombre_establecimiento
         FROM licencias l
         JOIN equipos e ON e.id_equipo = l.id_equipo
         JOIN software s ON s.id_software = l.id_software
         JOIN usuarios u ON u.id_usuario = l.id_usuario
-        JOIN establecimientos est ON e.id_establecimiento = est.id_establecimiento
+        JOIN establecimientos est ON l.id_establecimiento = est.id_establecimiento
         ORDER BY l.fecha_vencimiento ASC
     ");
 }
@@ -153,232 +255,6 @@ if ($rol === "ENCARGADO") {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/styleGlicencias.css">
-    <style>
-        /* Modal de Confirmación */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
-            z-index: 1000;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 0;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
-            width: 90%;
-            overflow: hidden;
-            animation: modalSlideIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes modalSlideIn {
-            from {
-                opacity: 0;
-                transform: translate(-50%, -60%);
-            }
-            to {
-                opacity: 1;
-                transform: translate(-50%, -50%);
-            }
-        }
-
-        .modal-header {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-            padding: 25px;
-            text-align: center;
-        }
-
-        .modal-header i {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            display: block;
-        }
-
-        .modal-header h3 {
-            margin: 0;
-            font-size: 1.4rem;
-            font-weight: 600;
-        }
-
-        .modal-body {
-            padding: 30px;
-            text-align: center;
-        }
-
-        .modal-body p {
-            margin: 0 0 20px 0;
-            color: #555;
-            font-size: 1.1rem;
-            line-height: 1.5;
-        }
-
-        .licencia-info {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border-left: 4px solid #e74c3c;
-            text-align: left;
-        }
-
-        .licencia-detail {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            padding: 5px 0;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .licencia-detail:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-        }
-
-        .detail-label {
-            font-weight: 600;
-            color: #495057;
-        }
-
-        .detail-value {
-            color: #e74c3c;
-            font-weight: 500;
-        }
-
-        .estado-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .estado-vigente { background: #d4edda; color: #155724; }
-        .estado-proxima { background: #fff3cd; color: #856404; }
-        .estado-vencida { background: #f8d7da; color: #721c24; }
-
-        .modal-actions {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-            margin-top: 25px;
-        }
-
-        .btn-cancel {
-            background: #95a5a6;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            flex: 1;
-        }
-
-        .btn-cancel:hover {
-            background: #7f8c8d;
-            transform: translateY(-2px);
-        }
-
-        .btn-confirm-delete {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .btn-confirm-delete:hover {
-            background: linear-gradient(135deg, #c0392b, #a93226);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
-        }
-
-        .btn-delete {
-            background: transparent;
-            color: #e74c3c;
-            border: 1px solid #e74c3c;
-            padding: 6px 12px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 0.85rem;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .btn-delete:hover {
-            background: #e74c3c;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
-        }
-
-        /* Mejoras para la tabla */
-        .action-btn {
-            transition: all 0.3s ease;
-        }
-
-        .action-btn:hover {
-            transform: translateY(-2px);
-        }
-
-        .table tbody tr {
-            transition: all 0.3s ease;
-        }
-
-        .table tbody tr:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Responsive para el modal */
-        @media (max-width: 480px) {
-            .modal-content {
-                width: 95%;
-                margin: 10px;
-            }
-
-            .modal-actions {
-                flex-direction: column;
-            }
-
-            .btn-cancel, .btn-confirm-delete {
-                flex: none;
-            }
-
-            .licencia-detail {
-                flex-direction: column;
-                gap: 5px;
-            }
-        }
-    </style>
 </head>
 <body>
     <!-- Modal de Confirmación de Eliminación -->
@@ -402,6 +278,10 @@ if ($rol === "ENCARGADO") {
                     <div class="licencia-detail">
                         <span class="detail-label">Usuario:</span>
                         <span class="detail-value" id="licenciaUsuario"></span>
+                    </div>
+                    <div class="licencia-detail">
+                        <span class="detail-label">Tipo Licencia:</span>
+                        <span class="detail-value" id="licenciaTipo"></span>
                     </div>
                     <div class="licencia-detail">
                         <span class="detail-label">Vencimiento:</span>
@@ -450,7 +330,6 @@ if ($rol === "ENCARGADO") {
         <!-- Tarjetas de estadísticas -->
         <?php
         // Calcular estadísticas
-        $hoy = date('Y-m-d');
         $total_licencias = $licencias->num_rows;
         
         // Reiniciar el puntero para contar estados
@@ -460,14 +339,13 @@ if ($rol === "ENCARGADO") {
         $vigentes = 0;
         
         while($row = $licencias->fetch_assoc()) {
-            $venc = $row['fecha_vencimiento'];
-            $dias = floor((strtotime($venc)-strtotime($hoy))/(60*60*24));
+            $estado = $row['estado'];
             
-            if ($venc < $hoy) {
+            if ($estado === 'VENCIDA') {
                 $vencidas++;
-            } elseif ($dias <= 30) {
+            } elseif ($estado === 'POR VENCER') {
                 $proximas++;
-            } else {
+            } elseif ($estado === 'VIGENTE') {
                 $vigentes++;
             }
         }
@@ -486,14 +364,13 @@ if ($rol === "ENCARGADO") {
             </div>
             <div class="stat-card">
                 <div class="number text-warning"><?= $proximas ?></div>
-                <div class="label">Próximas a Vencer</div>
+                <div class="label">Por Vencer</div>
             </div>
             <div class="stat-card">
                 <div class="number text-danger"><?= $vencidas ?></div>
                 <div class="label">Vencidas</div>
             </div>
         </div>
-
 
         <!-- Formulario de creación -->
         <div class="card mb-4">
@@ -534,6 +411,11 @@ if ($rol === "ENCARGADO") {
                         </div>
 
                         <div class="field">
+                            <label for="tipo_licencia"><i class="fas fa-tag me-1"></i> Tipo de Licencia</label>
+                            <input type="text" class="form-control" id="tipo_licencia" name="tipo_licencia" placeholder="Ej: Perpetua, Anual, Mensual...">
+                        </div>
+
+                        <div class="field">
                             <label for="fecha_inicio"><i class="fas fa-calendar-alt me-1"></i> Fecha de inicio</label>
                             <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" value="<?= date('Y-m-d') ?>" required>
                         </div>
@@ -541,6 +423,26 @@ if ($rol === "ENCARGADO") {
                         <div class="field">
                             <label for="fecha_vencimiento"><i class="fas fa-calendar-times me-1"></i> Fecha de vencimiento</label>
                             <input type="date" class="form-control" id="fecha_vencimiento" name="fecha_vencimiento" required>
+                        </div>
+
+                        <div class="field">
+                            <label for="metodo_activacion"><i class="fas fa-key me-1"></i> Método de Activación</label>
+                            <input type="text" class="form-control" id="metodo_activacion" name="metodo_activacion" placeholder="Ej: Clave de producto, Online...">
+                        </div>
+
+                        <div class="checkbox-field">
+                            <input type="checkbox" class="form-check-input" id="renovable" name="renovable" value="1">
+                            <label for="renovable" class="form-check-label">¿Es renovable?</label>
+                        </div>
+
+                        <div class="field full-width">
+                            <label for="restricciones"><i class="fas fa-ban me-1"></i> Restricciones</label>
+                            <textarea class="form-control" id="restricciones" name="restricciones" rows="2" placeholder="Restricciones de uso..."></textarea>
+                        </div>
+
+                        <div class="field full-width">
+                            <label for="notas"><i class="fas fa-sticky-note me-1"></i> Notas Adicionales</label>
+                            <textarea class="form-control" id="notas" name="notas" rows="2" placeholder="Información adicional..."></textarea>
                         </div>
                     </div>
                     <button type="submit" name="crear" class="btn btn-primary mt-3">
@@ -564,10 +466,12 @@ if ($rol === "ENCARGADO") {
                                 <th>Equipo</th>
                                 <th>Software</th>
                                 <th>Versión</th>
-                                <th>Usuario asignado</th>
+                                <th>Usuario</th>
+                                <th>Tipo Licencia</th>
                                 <th>Fecha inicio</th>
                                 <th>Fecha vencimiento</th>
                                 <th>Estado</th>
+                                <th>Renovable</th>
                                 <?php if ($rol === "ADMIN"): ?><th>Establecimiento</th><?php endif; ?>
                                 <th>Acciones</th>
                             </tr>
@@ -576,21 +480,18 @@ if ($rol === "ENCARGADO") {
                         <?php 
                         if ($licencias->num_rows > 0) {
                             while($row = $licencias->fetch_assoc()): 
-                                $hoy = date('Y-m-d');
-                                $venc = $row['fecha_vencimiento'];
-                                $dias = floor((strtotime($venc)-strtotime($hoy))/(60*60*24));
+                                $estado = $row['estado'];
+                                $estado_class = "";
+                                $txt = $estado;
                                 
-                                if ($venc < $hoy) {
+                                if ($estado === 'VENCIDA') {
                                     $estado_class = "estado-vencida";
-                                    $txt = "Vencida";
                                     $badge_class = "estado-vencida";
-                                } elseif ($dias <= 30) {
+                                } elseif ($estado === 'POR VENCER') {
                                     $estado_class = "estado-proxima";
-                                    $txt = "Próxima";
                                     $badge_class = "estado-proxima";
                                 } else {
                                     $estado_class = "estado-vigente";
-                                    $txt = "Vigente";
                                     $badge_class = "estado-vigente";
                                 }
                         ?>
@@ -599,31 +500,42 @@ if ($rol === "ENCARGADO") {
                                 <td><?= $row['nombre_software'] ?></td>
                                 <td><?= $row['version'] ?></td>
                                 <td><?= $row['usuario'] ?></td>
+                                <td><?= $row['tipo_licencia'] ?: 'N/A' ?></td>
                                 <td><?= $row['fecha_inicio'] ?></td>
                                 <td><?= $row['fecha_vencimiento'] ?></td>
-                                <td><span class="<?= $estado_class ?>"><?= $txt ?></span></td>
+                                <td><span class="estado-badge <?= $badge_class ?>"><?= $txt ?></span></td>
+                                <td>
+                                    <?php if ($row['renovable']): ?>
+                                        <i class="fas fa-check text-success"></i>
+                                    <?php else: ?>
+                                        <i class="fas fa-times text-danger"></i>
+                                    <?php endif; ?>
+                                </td>
                                 <?php if ($rol === "ADMIN"): ?><td><?= $row['nombre_establecimiento'] ?></td><?php endif; ?>
                                 <td>
-                                    <a href="editar_licencia.php?id=<?= $row['id_licencia'] ?>" class="btn btn-sm btn-outline-primary action-btn" title="Editar">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="#" class="btn-delete action-btn" 
-                                       data-id="<?= $row['id_licencia'] ?>"
-                                       data-software="<?= htmlspecialchars($row['nombre_software'] . ' ' . $row['version']) ?>"
-                                       data-equipo="<?= htmlspecialchars($row['nombre_equipo']) ?>"
-                                       data-usuario="<?= htmlspecialchars($row['usuario']) ?>"
-                                       data-vencimiento="<?= $row['fecha_vencimiento'] ?>"
-                                       data-estado="<?= $txt ?>"
-                                       data-estado-class="<?= $badge_class ?>"
-                                       title="Eliminar">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </a>
+                                    <div class="d-flex gap-2">
+                                        <a href="editar_licencia.php?id=<?= $row['id_licencia'] ?>" class="btn btn-sm btn-outline-primary action-btn" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="#" class="btn-delete action-btn" 
+                                           data-id="<?= $row['id_licencia'] ?>"
+                                           data-software="<?= htmlspecialchars($row['nombre_software'] . ' ' . $row['version']) ?>"
+                                           data-equipo="<?= htmlspecialchars($row['nombre_equipo']) ?>"
+                                           data-usuario="<?= htmlspecialchars($row['usuario']) ?>"
+                                           data-tipo="<?= htmlspecialchars($row['tipo_licencia']) ?>"
+                                           data-vencimiento="<?= $row['fecha_vencimiento'] ?>"
+                                           data-estado="<?= $txt ?>"
+                                           data-estado-class="<?= $badge_class ?>"
+                                           title="Eliminar">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         <?php 
                             endwhile;
                         } else {
-                            $colspan = $rol === "ADMIN" ? 8 : 7;
+                            $colspan = $rol === "ADMIN" ? 10 : 9;
                             echo "<tr><td colspan='$colspan' class='text-center py-4 text-muted'><i class='fas fa-info-circle me-2'></i>No hay licencias registradas</td></tr>";
                         }
                         ?>
@@ -635,29 +547,81 @@ if ($rol === "ENCARGADO") {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="../js/gestionLicencia.js"></script>
-
+    <script>
+        // Script para el modal de eliminación
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteButtons = document.querySelectorAll('.btn-delete');
+            const modal = document.getElementById('deleteModal');
+            const cancelBtn = document.getElementById('cancelDelete');
+            const confirmBtn = document.getElementById('confirmDelete');
+            
+            let deleteUrl = '';
+            
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Obtener datos de la licencia
+                    const software = this.getAttribute('data-software');
+                    const equipo = this.getAttribute('data-equipo');
+                    const usuario = this.getAttribute('data-usuario');
+                    const tipo = this.getAttribute('data-tipo');
+                    const vencimiento = this.getAttribute('data-vencimiento');
+                    const estado = this.getAttribute('data-estado');
+                    
+                    // Llenar el modal con la información
+                    document.getElementById('licenciaSoftware').textContent = software;
+                    document.getElementById('licenciaEquipo').textContent = equipo;
+                    document.getElementById('licenciaUsuario').textContent = usuario;
+                    document.getElementById('licenciaTipo').textContent = tipo || 'N/A';
+                    document.getElementById('licenciaVencimiento').textContent = vencimiento;
+                    document.getElementById('licenciaEstado').textContent = estado;
+                    
+                    // Configurar URL de eliminación
+                    const id = this.getAttribute('data-id');
+                    deleteUrl = `gestionLicencias.php?eliminar=${id}`;
+                    confirmBtn.href = deleteUrl;
+                    
+                    // Mostrar modal
+                    modal.style.display = 'block';
+                });
+            });
+            
+            // Cerrar modal
+            cancelBtn.addEventListener('click', function() {
+                modal.style.display = 'none';
+            });
+            
+            // Cerrar modal al hacer clic fuera
+            window.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        });
+    </script>
 </body>
 </html>
 <?php
+// ENVÍO DE NOTIFICACIONES POR CORREO
 if ($rol === "ENCARGADO" && $licencias && $licencias->num_rows > 0) {
     $licencias->data_seek(0); // reiniciar puntero del resultset
     $proximas = [];
+    $vencidas = [];
 
     while ($row = $licencias->fetch_assoc()) {
-        $hoy = date('Y-m-d');
-        $vencimiento = $row['fecha_vencimiento'];
-        $dias_restantes = floor((strtotime($vencimiento) - strtotime($hoy)) / (60 * 60 * 24));
-
-        if ($dias_restantes >= 0 && $dias_restantes <= 30) {
+        if ($row['estado'] === 'POR VENCER') {
             $proximas[] = $row;
+        } elseif ($row['estado'] === 'VENCIDA') {
+            $vencidas[] = $row;
         }
     }
 
-    if (count($proximas) > 0) {
-        require 'phpmailer/Exception.php';
-        require 'phpmailer/PHPMailer.php';
-        require 'phpmailer/SMTP.php';
+    // Enviar notificación si hay licencias por vencer O vencidas
+    if (count($proximas) > 0 || count($vencidas) > 0) {
+        require '../phpmailer/Exception.php';
+        require '../phpmailer/PHPMailer.php';
+        require '../phpmailer/SMTP.php';
 
         $mail = new PHPMailer\PHPMailer\PHPMailer(true);
 
@@ -674,36 +638,215 @@ if ($rol === "ENCARGADO" && $licencias && $licencias->num_rows > 0) {
             $mail->addAddress('jeremytortuguita@gmail.com', 'Jeremy'); // Destinatario principal
 
             $mail->isHTML(true);
-            $mail->Subject = "Notificacion: Licencias proximas a vencer";
+            $mail->Subject = "Notificación: Licencias Requieren Atención";
 
-            $body = "<h2>Estimado/a </h2>";
-            $body .= "<p>Se han detectado las siguientes licencias de su establecimiento que vencen en los proximos 30 dias:</p>";
-            $body .= "<table border='1' cellspacing='0' cellpadding='5'>
-                        <tr>
-                            <th>Equipo</th>
-                            <th>Software</th>
-                            <th>Version</th>
-                            <th>Fecha de Vencimiento</th>
-                        </tr>";
-            foreach ($proximas as $lic) {
-                $body .= "<tr>
-                            <td>{$lic['nombre_equipo']}</td>
-                            <td>{$lic['nombre_software']}</td>
-                            <td>{$lic['version']}</td>
-                            <td>{$lic['fecha_vencimiento']}</td>
-                          </tr>";
+            // Construir el cuerpo del correo
+            $body = "<h2>Estimado/a Usuario,</h2>";
+            $body .= "<p>Se han detectado licencias en su establecimiento que requieren su atención:</p>";
+
+            // Tabla para licencias por vencer
+            if (count($proximas) > 0) {
+                $body .= "<h3 style='color: #856404; background-color: #fff3cd; padding: 10px; border-radius: 5px;'>
+                         <i class='fas fa-exclamation-triangle'></i> Licencias por Vencer (Próximos 30 días)</h3>";
+                $body .= "<table border='1' cellspacing='0' cellpadding='8' style='border-collapse: collapse; width: 100%; margin-bottom: 20px;'>
+                         <thead style='background-color: #fff3cd;'>
+                            <tr>
+                                <th>Equipo</th>
+                                <th>Software</th>
+                                <th>Versión</th>
+                                <th>Usuario</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Días Restantes</th>
+                            </tr>
+                         </thead>
+                         <tbody>";
+                
+                foreach ($proximas as $lic) {
+                    $dias_restantes = floor((strtotime($lic['fecha_vencimiento']) - strtotime(date('Y-m-d'))) / (60 * 60 * 24));
+                    $body .= "<tr>
+                                <td>{$lic['nombre_equipo']}</td>
+                                <td>{$lic['nombre_software']}</td>
+                                <td>{$lic['version']}</td>
+                                <td>{$lic['usuario']}</td>
+                                <td>{$lic['fecha_vencimiento']}</td>
+                                <td style='color: #856404; font-weight: bold;'>{$dias_restantes} días</td>
+                              </tr>";
+                }
+                $body .= "</tbody></table>";
             }
-            $body .= "</table><p>Por favor, gestione la renovacion a la brevedad.</p>";
+
+            // Tabla para licencias vencidas
+            if (count($vencidas) > 0) {
+                $body .= "<h3 style='color: #721c24; background-color: #f8d7da; padding: 10px; border-radius: 5px;'>
+                         <i class='fas fa-times-circle'></i> Licencias Vencidas</h3>";
+                $body .= "<table border='1' cellspacing='0' cellpadding='8' style='border-collapse: collapse; width: 100%; margin-bottom: 20px;'>
+                         <thead style='background-color: #f8d7da;'>
+                            <tr>
+                                <th>Equipo</th>
+                                <th>Software</th>
+                                <th>Versión</th>
+                                <th>Usuario</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Días de Retraso</th>
+                            </tr>
+                         </thead>
+                         <tbody>";
+                
+                foreach ($vencidas as $lic) {
+                    $dias_retraso = floor((strtotime(date('Y-m-d')) - strtotime($lic['fecha_vencimiento'])) / (60 * 60 * 24));
+                    $body .= "<tr>
+                                <td>{$lic['nombre_equipo']}</td>
+                                <td>{$lic['nombre_software']}</td>
+                                <td>{$lic['version']}</td>
+                                <td>{$lic['usuario']}</td>
+                                <td>{$lic['fecha_vencimiento']}</td>
+                                <td style='color: #721c24; font-weight: bold;'>{$dias_retraso} días</td>
+                              </tr>";
+                }
+                $body .= "</tbody></table>";
+            }
+
+            // Resumen y recomendaciones
+            $body .= "<div style='background-color: #e9ecef; padding: 15px; border-radius: 5px; margin-top: 20px;'>
+                     <h4>Resumen:</h4>
+                     <ul>
+                         <li><strong>Licencias por vencer:</strong> " . count($proximas) . "</li>
+                         <li><strong>Licencias vencidas:</strong> " . count($vencidas) . "</li>
+                     </ul>
+                     <p><strong>Recomendaciones:</strong></p>
+                     <ul>
+                         <li>Renueve las licencias por vencer antes de su fecha de expiración</li>
+                         <li>Regularice las licencias vencidas lo antes posible</li>
+                         <li>Revise el sistema de gestión de licencias para más detalles</li>
+                     </ul>
+                     </div>";
+
+            $body .= "<p style='margin-top: 20px; color: #6c757d; font-size: 12px;'>
+                     Este es un mensaje automático, por favor no responda a este correo.</p>";
 
             $mail->Body = $body;
-            $mail->AltBody = "Tiene licencias proximas a vencer. Revise el sistema para mas detalles.";
+            
+            // Versión en texto plano para clientes de correo que no soportan HTML
+            $textBody = "NOTIFICACIÓN DE LICENCIAS\n\n";
+            $textBody .= "Se han detectado licencias que requieren atención:\n\n";
+            
+            if (count($proximas) > 0) {
+                $textBody .= "LICENCIAS POR VENCER:\n";
+                foreach ($proximas as $lic) {
+                    $dias_restantes = floor((strtotime($lic['fecha_vencimiento']) - strtotime(date('Y-m-d'))) / (60 * 60 * 24));
+                    $textBody .= "- {$lic['nombre_software']} {$lic['version']} en {$lic['nombre_equipo']} (Vence: {$lic['fecha_vencimiento']}, {$dias_restantes} días restantes)\n";
+                }
+                $textBody .= "\n";
+            }
+            
+            if (count($vencidas) > 0) {
+                $textBody .= "LICENCIAS VENCIDAS:\n";
+                foreach ($vencidas as $lic) {
+                    $dias_retraso = floor((strtotime(date('Y-m-d')) - strtotime($lic['fecha_vencimiento'])) / (60 * 60 * 24));
+                    $textBody .= "- {$lic['nombre_software']} {$lic['version']} en {$lic['nombre_equipo']} (Venció: {$lic['fecha_vencimiento']}, {$dias_retraso} días de retraso)\n";
+                }
+                $textBody .= "\n";
+            }
+            
+            $textBody .= "Total licencias por vencer: " . count($proximas) . "\n";
+            $textBody .= "Total licencias vencidas: " . count($vencidas) . "\n\n";
+            $textBody .= "Por favor, gestione la renovación y regularización a la brevedad.\n";
+            $textBody .= "Acceda al sistema para más detalles.";
+
+            $mail->AltBody = $textBody;
 
             $mail->send();
-            // Puedes mostrar un aviso en pantalla si quieres:
-            echo "<div class='notice success'><i class='fas fa-envelope'></i> Se ha enviado una notificación de licencias próximas a vencer a su correo.</div>";
+            
+            $mensajes = [];
+            $iconos = [];
+            
+            if (count($proximas) > 0) {
+                $mensajes[] = "<strong>" . count($proximas) . " licencia(s) por vencer</strong>";
+                $iconos[] = "⏰";
+            }
+            if (count($vencidas) > 0) {
+                $mensajes[] = "<strong>" . count($vencidas) . " licencia(s) vencida(s)</strong>";
+                $iconos[] = "⚠️";
+            }
+            
+            if (!empty($mensajes)) {
+                $icono_principal = implode(" ", $iconos);
+                echo "
+                <div class='container mt-4'>
+                    <div class='alert alert-info border-0 shadow-lg' role='alert' style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-left: 6px solid #ffd700;'>
+                        <div class='d-flex align-items-center'>
+                            <div class='flex-shrink-0' style='font-size: 2rem; margin-right: 15px;'>
+                                📧
+                            </div>
+                            <div class='flex-grow-1'>
+                                <h5 class='alert-heading mb-2'><i class='fas fa-paper-plane me-2'></i>Notificación Enviada</h5>
+                                <p class='mb-1'>Se ha enviado una alerta por correo electrónico con:</p>
+                                <div class='mt-2'>" . implode(" y ", $mensajes) . "</div>
+                                <hr style='border-color: rgba(255,255,255,0.3); margin: 10px 0;'>
+                                <small class='opacity-75'>
+                                    <i class='fas fa-clock me-1'></i>Enviado el " . date('d/m/Y \a \l\a\s H:i:s') . "
+                                </small>
+                            </div>
+                            <button type='button' class='btn-close btn-close-white' data-bs-dismiss='alert' aria-label='Close'></button>
+                        </div>
+                    </div>
+                </div>";
+            }
+
         } catch (Exception $e) {
-            echo "<div class='notice error'>❌ Error al enviar notificación: {$mail->ErrorInfo}</div>";
+            echo "
+            <div class='container mt-4'>
+                <div class='alert alert-danger border-0 shadow-lg' role='alert' style='border-left: 6px solid #dc3545;'>
+                    <div class='d-flex align-items-center'>
+                        <div class='flex-shrink-0' style='font-size: 1.5rem; margin-right: 15px;'>
+                            <i class='fas fa-exclamation-triangle text-danger'></i>
+                        </div>
+                        <div class='flex-grow-1'>
+                            <h5 class='alert-heading mb-2'><i class='fas fa-times-circle me-2'></i>Error en Notificación</h5>
+                            <p class='mb-1'>No se pudo enviar la notificación por correo electrónico.</p>
+                            <small class='text-muted'>Error: " . htmlspecialchars($mail->ErrorInfo) . "</small>
+                        </div>
+                        <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
+                    </div>
+                </div>
+            </div>";
         }
+    } else {
+        // Mensaje cuando no hay licencias para notificar
+        echo "
+        <div class='container mt-4'>
+            <div class='alert alert-success border-0 shadow-sm' role='alert' style='border-left: 6px solid #28a745;'>
+                <div class='d-flex align-items-center'>
+                    <div class='flex-shrink-0' style='font-size: 1.5rem; margin-right: 15px;'>
+                        <i class='fas fa-check-circle text-success'></i>
+                    </div>
+                    <div class='flex-grow-1'>
+                        <h6 class='alert-heading mb-1'><i class='fas fa-info-circle me-2'></i>Estado del Sistema</h6>
+                        <p class='mb-0'>No hay licencias por vencer o vencidas que requieran notificación.</p>
+                    </div>
+                    <button type='button' class='btn-close' data-bs-dismiss='alert' aria-label='Close'></button>
+                </div>
+            </div>
+        </div>";
+    }
+} else {
+    // Mensaje cuando no se cumplen las condiciones para enviar notificaciones
+    if ($rol !== "ENCARGADO") {
+        echo "
+        <div class='container mt-4'>
+            <div class='alert alert-secondary border-0 shadow-sm' role='alert'>
+                <div class='d-flex align-items-center'>
+                    <div class='flex-shrink-0' style='font-size: 1.2rem; margin-right: 12px;'>
+                        <i class='fas fa-user-shield text-muted'></i>
+                    </div>
+                    <div class='flex-grow-1'>
+                        <small class='text-muted mb-0'>
+                            <i class='fas fa-info-circle me-1'></i>Las notificaciones por correo están disponibles solo para usuarios ENCARGADO.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>";
     }
 }
 ?>
