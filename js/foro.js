@@ -1,98 +1,172 @@
- document.addEventListener('DOMContentLoaded', function() {
+// Crear partículas de fondo
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 15;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                // Tamaño y posición aleatoria
+                const size = Math.random() * 100 + 50;
+                const left = Math.random() * 100;
+                const top = Math.random() * 100;
+                const delay = Math.random() * 5;
+                
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${left}%`;
+                particle.style.top = `${top}%`;
+                particle.style.animationDelay = `${delay}s`;
+                particle.style.opacity = Math.random() * 0.1 + 0.05;
+                
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Script para mejorar la experiencia del usuario
+        document.addEventListener('DOMContentLoaded', function() {
+            createParticles();
+            
             const form = document.getElementById('contactForm');
-            const statusMessage = document.getElementById('statusMessage');
             const submitBtn = document.getElementById('submitBtn');
             const btnText = document.getElementById('btnText');
-
+            const messageTextarea = document.getElementById('message');
+            
+            // Contador de caracteres
+            const charCount = document.createElement('div');
+            charCount.style.cssText = 'text-align: right; font-size: 0.8rem; color: var(--gray); margin-top: 5px;';
+            messageTextarea.parentNode.appendChild(charCount);
+            
+            messageTextarea.addEventListener('input', function() {
+                const length = this.value.length;
+                charCount.textContent = `${length} caracteres`;
+                
+                if (length < 10) {
+                    charCount.style.color = 'var(--warning)';
+                } else if (length < 50) {
+                    charCount.style.color = 'var(--warning)';
+                } else {
+                    charCount.style.color = 'var(--success)';
+                }
+            });
+            
             form.addEventListener('submit', function(e) {
-                e.preventDefault();
+                // Validación mejorada del formulario
+                const subject = document.getElementById('subject').value;
+                const message = document.getElementById('message').value;
                 
-                const formData = new FormData(form);
+                if (!subject) {
+                    e.preventDefault();
+                    showMessage('❌ Por favor seleccione el tipo de solicitud.', 'error');
+                    document.getElementById('subject').focus();
+                    return;
+                }
                 
-                // Mostrar estado de carga
-                btnText.innerHTML = '<div class="loading"></div> Enviando...';
+                if (message.length < 20) {
+                    e.preventDefault();
+                    showMessage('❌ Por favor describa su problema con más detalle (mínimo 20 caracteres).', 'error');
+                    document.getElementById('message').focus();
+                    return;
+                }
+                
+                // Cambiar el texto del botón durante el envío
                 submitBtn.disabled = true;
+                btnText.textContent = 'Enviando solicitud...';
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
                 submitBtn.classList.remove('pulse');
                 
-                // Mostrar mensaje de carga
-                statusMessage.textContent = 'Enviando mensaje...';
-                statusMessage.className = 'status-message';
+                // Simular envío (en producción esto sería real)
+                setTimeout(() => {
+                    showMessage('✅ Su solicitud ha sido enviada correctamente. Nos pondremos en contacto pronto.', 'success');
+                }, 2000);
+            });
+            
+            // Efectos de hover en los inputs
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.parentElement.style.transform = 'translateY(-2px)';
+                });
+                
+                input.addEventListener('blur', function() {
+                    this.parentElement.style.transform = 'translateY(0)';
+                });
+            });
+            
+            function showMessage(message, type) {
+                const statusMessage = document.getElementById('statusMessage');
+                statusMessage.textContent = message;
+                statusMessage.className = `status-message ${type}`;
                 statusMessage.style.display = 'block';
                 
-                // Simular envío (reemplaza con tu endpoint real)
+                // Scroll suave al mensaje
+                statusMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
                 setTimeout(() => {
-                    fetch(form.action, {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.text())
-                    .then(data => {
-                        if (data.includes('enviado') || data.includes('success')) {
-                            statusMessage.textContent = '¡Mensaje enviado con éxito! Nos pondremos en contacto contigo pronto.';
-                            statusMessage.className = 'status-message success';
-                            form.reset();
-                            
-                            // Mostrar confeti visual
-                            showSuccessAnimation();
-                        } else {
-                            throw new Error('Error en el servidor');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        statusMessage.textContent = 'Error al enviar el mensaje. Por favor, inténtelo de nuevo o contacte directamente por teléfono.';
-                        statusMessage.className = 'status-message error';
-                    })
-                    .finally(() => {
-                        // Restaurar el botón
-                        btnText.textContent = 'Enviar Mensaje';
-                        submitBtn.disabled = false;
-                        submitBtn.classList.add('pulse');
-                    });
-                }, 1500);
-            });
-
-            // Efectos de validación en tiempo real
-            const inputs = form.querySelectorAll('input, textarea');
-            inputs.forEach(input => {
-                input.addEventListener('input', function() {
-                    if (this.checkValidity()) {
-                        this.style.borderColor = '#28a745';
-                    } else {
-                        this.style.borderColor = '';
-                    }
-                });
-            });
-
-            function showSuccessAnimation() {
-                // Efecto visual simple de éxito
-                submitBtn.style.background = 'linear-gradient(135deg, #27ae60, #2ecc71)';
-                setTimeout(() => {
-                    submitBtn.style.background = 'linear-gradient(135deg, var(--primary), var(--primary-dark))';
-                }, 2000);
+                    statusMessage.style.display = 'none';
+                }, 6000);
             }
-
-            // Efecto de aparición gradual para los elementos
-            const observerOptions = {
-                threshold: 0.1,
-                rootMargin: '0px 0px -50px 0px'
-            };
-
-            const observer = new IntersectionObserver(function(entries) {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.style.opacity = '1';
-                        entry.target.style.transform = 'translateY(0)';
-                    }
-                });
-            }, observerOptions);
-
-            // Aplicar a los elementos del formulario
-            const formElements = document.querySelectorAll('.form-group, .btn-container');
-            formElements.forEach(el => {
-                el.style.opacity = '0';
-                el.style.transform = 'translateY(20px)';
-                el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-                observer.observe(el);
-            });
+            
+            // Efecto de carga inicial
+            const container = document.querySelector('.container');
+            container.style.opacity = '0';
+            container.style.transform = 'translateY(30px)';
+            
+            setTimeout(() => {
+                container.style.transition = 'all 0.6s ease-out';
+                container.style.opacity = '1';
+                container.style.transform = 'translateY(0)';
+            }, 100);
         });
+        // Función para cerrar mensajes
+function closeMessage() {
+    const overlay = document.getElementById('messageOverlay');
+    if (overlay) {
+        overlay.style.animation = 'slideOutDown 0.5s forwards';
+        setTimeout(() => {
+            overlay.remove();
+        }, 500);
+    }
+}
+
+// Cerrar mensaje automáticamente después de 5 segundos
+document.addEventListener('DOMContentLoaded', function() {
+    const messageOverlay = document.getElementById('messageOverlay');
+    if (messageOverlay) {
+        setTimeout(() => {
+            closeMessage();
+        }, 5000);
+    }
+    
+    // Cerrar con la tecla ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeMessage();
+        }
+    });
+    
+    // Cerrar haciendo clic fuera del mensaje
+    document.addEventListener('click', function(e) {
+        const messageOverlay = document.getElementById('messageOverlay');
+        if (messageOverlay && e.target === messageOverlay) {
+            closeMessage();
+        }
+    });
+});
+
+// Agregar animación de salida
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideOutDown {
+        from {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            transform: translateY(50px);
+        }
+    }
+`;
+document.head.appendChild(style);
