@@ -49,6 +49,13 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== "USUARIO") {
               <span>Reportar Problema</span>
             </a>
           </li>
+          <li>
+          <a href="solicitar_licencia.php" class="btn">
+              <i class="fa-regular fa-envelope"></i>
+              <span>Solicitar Licencia</span>
+            </a>
+          </li>
+          
         </ul>
       </nav>
       <a href="../controlador/logout.php" class="logout">
@@ -97,6 +104,16 @@ if (!isset($_SESSION['rol']) || $_SESSION['rol'] !== "USUARIO") {
             Enviar Reporte
           </a>
         </div>
+          <div class="card">
+            <div class="card-icon">
+              <i class="fa-regular fa-envelope"></i>
+            </div>
+            <h3>Solicitar Licencia</h3>
+            <p>Solicita nuevas licencias de software para tu equipo o actualizaciones necesarias.</p>
+            <a href="solicitar_licencia.php" class="btn">
+              <i class="fas fa-arrow-right"></i>
+              Solicitar Ahora
+            </a>
       </section>
 
       <footer class="footer">

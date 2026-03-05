@@ -38,6 +38,7 @@ if (isset($_POST['guardar'])) {
     $sistema_operativo = $conexion->real_escape_string($_POST['sistema_operativo']);
     $Modelo = $conexion->real_escape_string($_POST['Modelo']);
     $Numero_serial = $conexion->real_escape_string($_POST['Numero_serial']);
+    $estado = $conexion->real_escape_string($_POST['estado']);
 
     // Verificar si el número serial ya existe en OTRO equipo
     $check_sql = "SELECT id_equipo FROM equipos WHERE Numero_serial = ? AND id_equipo != ?";
@@ -49,13 +50,17 @@ if (isset($_POST['guardar'])) {
     if ($check_result->num_rows > 0) {
         $mensaje = '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Error: El número serial "' . htmlspecialchars($Numero_serial) . '" ya está registrado en otro equipo.</div>';
     } else {
-        $update = $conexion->prepare("UPDATE equipos SET nombre_equipo = ?, sistema_operativo = ?, Modelo = ?, Numero_serial = ? WHERE id_equipo = ? AND id_establecimiento = ?");
-        $update->bind_param("ssssii", $nombre_equipo, $sistema_operativo, $Modelo, $Numero_serial, $id_equipo, $id_establecimiento);
+        // CORRECCIÓN: La consulta tiene 7 parámetros (5 campos + 2 condiciones)
+        $update = $conexion->prepare("UPDATE equipos SET nombre_equipo = ?, sistema_operativo = ?, Modelo = ?, Numero_serial = ?, estado = ? WHERE id_equipo = ? AND id_establecimiento = ?");
+        
+        // CORRECCIÓN: "ssssssi" significa 6 strings y 1 integer (o "ssssisi" dependiendo de tus tipos de datos)
+        // nombre_equipo (string), sistema_operativo (string), Modelo (string), Numero_serial (string), estado (string), id_equipo (int), id_establecimiento (int)
+        $update->bind_param("sssssii", $nombre_equipo, $sistema_operativo, $Modelo, $Numero_serial, $estado, $id_equipo, $id_establecimiento);
 
         if ($update->execute()) {
             echo "<script>
                 alert('✅ Equipo actualizado correctamente.');
-                window.location='gestionEquipos.php?success=1';
+                window.location='gestionEquipos.php?updated=1';
             </script>";
             exit();
         } else {
@@ -70,8 +75,7 @@ if (isset($_POST['guardar'])) {
     <meta charset="UTF-8">
     <title>Editar Equipo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="../css/styleequipos.css">
-    <link rel="stylesheet" href="../css/styleeditarEquipo.css">
+    <link rel="stylesheet" href="../css/editarEquipos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" href="../img/logo.png">
 </head>
@@ -115,7 +119,7 @@ if (isset($_POST['guardar'])) {
             <section class="form-card">
                 <form method="POST" action="">
                     <div class="form-grid">
-                        <div class="field">
+                        <div class="field full-width">
                             <label for="nombre_equipo">
                                 <i class="fas fa-desktop"></i> Nombre del equipo
                             </label>
@@ -124,7 +128,7 @@ if (isset($_POST['guardar'])) {
                                    placeholder="Ej: Aula-Comp-01, Laboratorio-PC-02" required>
                         </div>
 
-                        <div class="field">
+                        <div class="field full-width">
                             <label for="sistema_operativo">
                                 <i class="fas fa-cog"></i> Sistema operativo
                             </label>
@@ -133,27 +137,38 @@ if (isset($_POST['guardar'])) {
                                       rows="3"><?php echo htmlspecialchars($equipo['sistema_operativo']); ?></textarea>
                         </div>
 
-                        <div class="field-group">
-                            <div class="field">
-                                <label for="Modelo">
-                                    <i class="fas fa-laptop"></i> Modelo
-                                </label>
-                                <input id="Modelo" type="text" name="Modelo" 
-                                       value="<?php echo htmlspecialchars($equipo['Modelo']); ?>" 
-                                       placeholder="Expertbook, ThinkPad, etc.">
-                            </div>
-                            
-                            <div class="field">
-                                <label for="Numero_serial">
-                                    <i class="fas fa-barcode"></i> Número Serial
-                                </label>
-                                <input id="Numero_serial" type="text" name="Numero_serial" 
-                                       value="<?php echo htmlspecialchars($equipo['Numero_serial']); ?>" 
-                                       placeholder="3CMN8G21B" required>
-                                <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
-                                    <i class="fas fa-info-circle"></i> Este número debe ser único para cada equipo
-                                </small>
-                            </div>
+                        <div class="field">
+                            <label for="Modelo">
+                                <i class="fas fa-laptop"></i> Modelo
+                            </label>
+                            <input id="Modelo" type="text" name="Modelo" 
+                                   value="<?php echo htmlspecialchars($equipo['Modelo']); ?>" 
+                                   placeholder="Expertbook, ThinkPad, etc.">
+                        </div>
+                        
+                        <div class="field">
+                            <label for="Numero_serial">
+                                <i class="fas fa-barcode"></i> Número Serial
+                            </label>
+                            <input id="Numero_serial" type="text" name="Numero_serial" 
+                                   value="<?php echo htmlspecialchars($equipo['Numero_serial']); ?>" 
+                                   placeholder="3CMN8G21B" required>
+                            <small style="color: #666; font-size: 12px; margin-top: 5px; display: block;">
+                                <i class="fas fa-info-circle"></i> Este número debe ser único
+                            </small>
+                        </div>
+
+                        <div class="field full-width">
+                            <label for="estado">
+                                <i class="fa-solid fa-computer"></i></i> Estado del Equipo
+                            </label>
+                            <select id="estado" name="estado" class="select-estado" required>
+                                <option value="Disponible" <?php echo ($equipo['estado'] == 'Disponible') ? 'selected' : ''; ?>>🟢 Disponible</option>
+                                <option value="En Uso" <?php echo ($equipo['estado'] == 'En Uso') ? 'selected' : ''; ?>>🔵 En Uso</option>
+                                <option value="En Mantenimiento" <?php echo ($equipo['estado'] == 'En Mantenimiento') ? 'selected' : ''; ?>>🟡 En Mantenimiento</option>
+                                <option value="Dañado" <?php echo ($equipo['estado'] == 'Dañado') ? 'selected' : ''; ?>>🔴 Dañado</option>
+                                <option value="De Baja" <?php echo ($equipo['estado'] == 'De Baja') ? 'selected' : ''; ?>>⚫ De Baja</option>
+                            </select>
                         </div>
                     </div>
 
@@ -169,6 +184,5 @@ if (isset($_POST['guardar'])) {
             </section>
         </div>
     </div>
-<script src="../js/editarEquipo.js"></script>
 </body>
 </html>

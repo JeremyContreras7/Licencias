@@ -19,6 +19,7 @@ if (isset($_POST['crear'])) {
     $sistema_operativo = $conexion->real_escape_string($_POST['sistema_operativo']);
     $Modelo = $conexion->real_escape_string($_POST['Modelo']);
     $Numero_serial = $conexion->real_escape_string($_POST['Numero_serial']);
+    $estado = $conexion->real_escape_string($_POST['estado']);
 
     // Verificar si el número serial ya existe
     $check_sql = "SELECT id_equipo FROM equipos WHERE Numero_serial = '$Numero_serial'";
@@ -27,8 +28,8 @@ if (isset($_POST['crear'])) {
     if ($result->num_rows > 0) {
         $mensaje = '<div class="alert error"><i class="fas fa-exclamation-triangle"></i> Error: El número serial "' . htmlspecialchars($Numero_serial) . '" ya está registrado en el sistema.</div>';
     } else {
-        $sql = "INSERT INTO equipos (nombre_equipo, sistema_operativo, Modelo, numero_serial, id_establecimiento) 
-                VALUES ('$nombre_equipo', '$sistema_operativo', '$Modelo', '$Numero_serial', '$id_establecimiento')";
+        $sql = "INSERT INTO equipos (nombre_equipo, sistema_operativo, Modelo, numero_serial, estado, id_establecimiento) 
+                VALUES ('$nombre_equipo', '$sistema_operativo', '$Modelo', '$Numero_serial', '$estado', '$id_establecimiento')";
         
         if ($conexion->query($sql)) {
             header("Location: gestionEquipos.php?success=1");
@@ -116,7 +117,7 @@ $total_equipos = $equipos->num_rows;
         <header class="header">
             <div class="header-content">
                 <div class="header-text">
-                    <h1><i class="fas fa-laptop-code"></i> Gesti&oacute;n de Equipos</h1>
+                    <h1><i class="fa-solid fa-laptop"></i> Gesti&oacute;n de Equipos</h1>
                     <p>Registra y administra los equipos del establecimiento</p>
                 </div>
                 <div class="header-actions">
@@ -240,6 +241,18 @@ $total_equipos = $equipos->num_rows;
                             <i class="fas fa-info-circle"></i> Este número debe ser único para cada equipo
                         </small>
                     </div>
+                    <div class="field full-width">
+                        <label for="estado">
+                            <i class="fa-solid fa-computer"></i> Estado del Equipo
+                        </label>
+                        <select id="estado" name="estado" class="select-estado" required>
+                            <option disabled selected value="">Selecciona el estado</option>
+                            <option value="En uso">En uso</option>
+                            <option value="Disponible">Disponible</option>
+                            <option value="En reparación">En reparación</option>
+                            <option value="Fuera de servicio">Fuera de servicio</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="btn-group">
@@ -273,6 +286,7 @@ $total_equipos = $equipos->num_rows;
                             <th>Sistema Operativo</th>
                             <th>Modelo</th>
                             <th>Número Serial</th>
+                            <th>Estado</th>
                             <th>Establecimiento</th>
                             <th class="center">Acciones</th>
                         </tr>
@@ -293,6 +307,7 @@ $total_equipos = $equipos->num_rows;
                                         <?php echo htmlspecialchars($row['Numero_serial'] ?: '—'); ?>
                                     </code>
                                 </td>
+                                <td><?php echo htmlspecialchars($row['estado'] ?: '—'); ?></td>
                                 <td>
                                     <i class="fas fa-building" style="color: var(--secondary); margin-right: 8px;"></i>
                                     <?php echo htmlspecialchars($row['nombre_establecimiento'] ?? $_SESSION['establecimiento']); ?>
@@ -305,7 +320,9 @@ $total_equipos = $equipos->num_rows;
                                        data-id="<?php echo $row['id_equipo']; ?>"
                                        data-nombre="<?php echo htmlspecialchars($row['nombre_equipo']); ?>"
                                        data-serial="<?php echo htmlspecialchars($row['Numero_serial']); ?>"
-                                       data-modelo="<?php echo htmlspecialchars($row['Modelo']); ?>">
+                                       data-modelo="<?php echo htmlspecialchars($row['Modelo']); ?>"
+                                       data-estado="<?php echo htmlspecialchars($row['estado']); ?>">
+
                                         <i class="fas fa-trash"></i> Eliminar
                                     </a>
                                 </td>
