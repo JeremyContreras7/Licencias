@@ -487,3 +487,256 @@
             color: #721c24;
             border-left: 4px solid #dc3545;
         }
+                .btn-renovar {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white;
+            border: none;
+        }
+        .btn-renovar:hover {
+            background: linear-gradient(135deg, #388E3C, #1B5E20);
+            color: white;
+        }
+        
+        /* MODAL DE RENOVACIÓN COMPACTO */
+        .modal-renew-header {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white;
+            border-radius: 8px 8px 0 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 15px 20px;
+        }
+        
+        .compact-modal .modal-content {
+            max-width: 500px;
+            margin: 30px auto;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+        
+        .compact-modal .modal-body {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+            flex: 1;
+        }
+        
+        .compact-modal .modal-footer {
+            position: sticky;
+            bottom: 0;
+            background: white;
+            border-top: 1px solid #dee2e6;
+            z-index: 100;
+            padding: 15px 20px;
+        }
+        
+        /* Scrollbar personalizado */
+        .compact-modal .modal-body::-webkit-scrollbar {
+            width: 6px;
+        }
+        .compact-modal .modal-body::-webkit-scrollbar-track {
+            background: #f8f9fa;
+            border-radius: 3px;
+        }
+        .compact-modal .modal-body::-webkit-scrollbar-thumb {
+            background: #adb5bd;
+            border-radius: 3px;
+        }
+        .compact-modal .modal-body::-webkit-scrollbar-thumb:hover {
+            background: #6c757d;
+        }
+        
+        /* Información compacta */
+        .compact-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4CAF50;
+            border-right: 1px solid #dee2e6;
+            border-top: 1px solid #dee2e6;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .compact-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            padding: 3px 0;
+            border-bottom: 1px dashed #e9ecef;
+        }
+        .compact-info-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .compact-info-label {
+            font-weight: 600;
+            color: #495057;
+            flex: 0 0 45%;
+        }
+        .compact-info-value {
+            color: #212529;
+            flex: 0 0 55%;
+            text-align: right;
+            font-weight: 500;
+        }
+        
+        /* Opciones de período */
+        .renew-period-option {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        .renew-period-option:hover {
+            border-color: #4CAF50;
+            background-color: #f1f8e9;
+            transform: translateY(-2px);
+        }
+        .renew-period-option.selected {
+            border-color: #4CAF50;
+            background-color: #e8f5e8;
+            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.15);
+        }
+        
+        .renew-period-icon {
+            font-size: 1.8rem;
+            color: #4CAF50;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        
+        /* Previsualización */
+        .date-preview {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 15px 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        /* Campos del formulario */
+        .compact-modal .form-control,
+        .compact-modal .form-control-sm {
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+            transition: all 0.3s;
+        }
+        .compact-modal .form-control:focus,
+        .compact-modal .form-control-sm:focus {
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 0.25rem rgba(76, 175, 80, 0.25);
+        }
+        
+        /* Alert compacto */
+        .alert-sm {
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            margin-bottom: 0;
+        }
+        
+        /* Botones */
+        .compact-modal .btn {
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .compact-modal .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        /* Labels */
+        .compact-modal .form-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+            color: #495057;
+        }
+        
+        /* Radio buttons mejorados */
+        .renew-period-option .form-check-input {
+            margin-top: 0.3rem;
+        }
+        .renew-period-option .form-check-label {
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+        
+        /* Títulos */
+        .compact-modal h4 {
+            font-size: 1.25rem;
+            margin-bottom: 0;
+        }
+        .compact-modal h6 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 12px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 576px) {
+            .compact-modal .modal-content {
+                margin: 10px;
+                max-height: 90vh;
+            }
+            .compact-modal .modal-body {
+                max-height: 350px;
+                padding: 15px;
+            }
+            .compact-info-item {
+                flex-direction: column;
+            }
+            .compact-info-label,
+            .compact-info-value {
+                flex: 0 0 100%;
+                text-align: left;
+            }
+            .compact-info-value {
+                margin-top: 2px;
+            }
+                    .alert-custom {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            max-width: 400px;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .error-message {
+            background: linear-gradient(135deg, #ff6b6b, #ee5253);
+            color: white;
+            border-left: 6px solid #c0392b;
+        }
+        
+        .success-message {
+            background: linear-gradient(135deg, #51cf66, #37b24d);
+            color: white;
+            border-left: 6px solid #2b8e3c;
+        }
+        }
