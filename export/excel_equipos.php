@@ -61,18 +61,20 @@ echo "\xEF\xBB\xBF";
                 <th>SISTEMA OPERATIVO</th>
                 <th>MODELO</th>
                 <th>NÚMERO SERIAL</th>
+                <th>ESTADO</th>
                 <th>ESTABLECIMIENTO</th>
             </tr>
         </thead>
         <tbody>
             <?php while ($row = $result->fetch_assoc()): ?>
             <tr>
-                <td style="text-align: center;"><?php echo $row['id_equipo']; ?></td>
-                <td><?php echo htmlspecialchars($row['nombre_equipo']); ?></td>
-                <td><?php echo htmlspecialchars($row['sistema_operativo']); ?></td>
-                <td><?php echo htmlspecialchars($row['Modelo']); ?></td>
-                <td><?php echo htmlspecialchars($row['Numero_serial']); ?></td>
-                <td><?php echo htmlspecialchars($row['nombre_establecimiento'] ?? 'N/A'); ?></td>
+                <td style="text-align: center;"><?php echo $row['id_equipo'] ?? ''; ?></td>
+                <td><?php echo htmlspecialchars($row['nombre_equipo'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars($row['sistema_operativo'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars($row['Modelo'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars($row['Numero_serial'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars($row['estado'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                <td><?php echo htmlspecialchars($row['nombre_establecimiento'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
             </tr>
             <?php endwhile; ?>
         </tbody>

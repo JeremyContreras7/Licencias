@@ -19,11 +19,19 @@ $result = $conexion->query($query);
 $pdf->SetFont('Arial','B',12);
 $pdf->SetFillColor(67, 97, 238); // Color azul
 $pdf->SetTextColor(255, 255, 255); // Texto blanco
-$pdf->Cell(15, 10, 'ID', 1, 0, 'C', true);
-$pdf->Cell(50, 10, 'NOMBRE EQUIPO', 1, 0, 'C', true);
-$pdf->Cell(50, 10, 'SISTEMA OPERATIVO', 1, 0, 'C', true);
-$pdf->Cell(40, 10, 'MODELO', 1, 0, 'C', true);
-$pdf->Cell(35, 10, 'N° SERIAL', 1, 1, 'C', true);
+
+// Opción 1: Usar todos los parámetros posicionales (recomendado)
+$pdf->Cell(10, 10, 'ID', 1, 0, 'C', true);
+$pdf->Cell(41, 10, 'NOMBRE EQUIPO', 1, 0, 'C', true);
+$pdf->Cell(46, 10, 'SISTEMA OPERATIVO', 1, 0, 'C', true);
+$pdf->Cell(30, 10, 'MODELO', 1, 0, 'C', true);
+$pdf->Cell(25, 10, 'SERIAL', 1, 0, 'C', true);
+$pdf->Cell(25, 10, 'ESTADO', 1, 1, 'C', true); // CORREGIDO: 'ln: 1' cambiado a '1'
+
+/*
+// Opción 2: Usar argumentos nombrados (PHP 8+)
+$pdf->Cell(35, 10, 'ESTADO', border: 1, ln: 1, align: 'C', fill: true);
+*/
 
 // Datos de la tabla
 $pdf->SetFont('Arial','',10);
@@ -32,12 +40,13 @@ $fill = false; // Para alternar colores
 
 while($row = $result->fetch_assoc()) {
     $pdf->SetFillColor(240, 240, 240); // Gris claro
-    $pdf->Cell(15, 8, $row['id_equipo'], 1, 0, 'C', $fill);
-    $pdf->Cell(50, 8, $row['nombre_equipo'], 1, 0, 'L', $fill);
-    $pdf->Cell(50, 8, $row['sistema_operativo'], 1, 0, 'L', $fill);
-    $pdf->Cell(40, 8, $row['Modelo'], 1, 0, 'L', $fill);
-    $pdf->Cell(35, 8, $row['Numero_serial'], 1, 1, 'L', $fill);
-    
+    $pdf->Cell(10, 8, $row['id_equipo'], 1, 0, 'C', $fill);
+    $pdf->Cell(41, 8, $row['nombre_equipo'], 1, 0, 'L', $fill);
+    $pdf->Cell(46, 8, $row['sistema_operativo'], 1, 0, 'L', $fill);
+    $pdf->Cell(30, 8, $row['Modelo'], 1, 0, 'L', $fill);
+    $pdf->Cell(25, 8, $row['Numero_serial'], 1, 0, 'L', $fill);
+    $pdf->Cell(25, 8, $row['estado'], 1, 1, 'L', $fill);
+
     $fill = !$fill; // Alternar color
 }
 
